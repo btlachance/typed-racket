@@ -121,6 +121,7 @@ the typed racket language.
          (for-label (only-in "base-types-extra.rkt" Values)
                     (only-in racket/base values))
          (for-syntax
+          racket/provide-transform
           racket/lazy-require
           syntax/parse/pre
           syntax/stx
@@ -930,3 +931,13 @@ the typed racket language.
 (define-syntax-rule (for*/extflvector: e ...)
   (base-for/flvector: for*: ExtFlonum extflvector make-extflvector unsafe-extflvector-ref
                       unsafe-extflvector-set! extflvector-copy e ...))
+
+(define-syntax contract-out
+  (make-provide-pre-transformer
+   (lambda (stx modes)
+     (syntax-parse stx
+       [(_ [id:id ctc:expr] ...)
+        #`(combine-out
+           #,@(for/list ([id (syntax->list #'(id ...))]
+                         [ctc (syntax->list #'(ctc ...))])
+                (user-contract-property id ctc)))]))))

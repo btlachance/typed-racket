@@ -139,9 +139,15 @@
                                  "identifier" #,(symbol->string (syntax-e orig-id))
                                  "type" #,(pretty-format-rep type #:indent 8)))]
            [else
-            (match-define (list defs ctc) result)
+            (match-define (list defs *ctc) result)
+            (define user-ctc (user-contract-property orig-id))
+            ;; TODO: is there a way to streamline maybe-inline-val and ctc?
             (define maybe-inline-val
-              (should-inline-contract?/cache ctc cache))
+              (and (not user-ctc)
+                   (should-inline-contract?/cache *ctc cache)))
+            (define ctc (match user-ctc
+                          [#f *ctc]
+                          [_ #`(and/c #,*ctc #,user-ctc)]))
             #`(begin #,@defs
                      #,@(if maybe-inline-val
                             null
