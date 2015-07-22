@@ -44,7 +44,10 @@
 ;; tc-id : identifier -> tc-results
 (define/cond-contract (tc-id id)
   (--> identifier? full-tc-results/c)
-  (define rename-id (contract-rename-id-property id))
+  (define rename-id* (contract-rename-id-property id))
+  (define rename-id (if (and rename-id* (user-contract-property rename-id*))
+                        (provide/contract-info-original-id (syntax-local-value rename-id*))
+                        rename-id*))
   (define id* (or rename-id id))
   ;; see if id* is an alias for an object
   ;; if not (-id-path id*) is returned

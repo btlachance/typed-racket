@@ -116,7 +116,7 @@
 
 ;; Generate a contract for a TR provide form
 (define (generate-contract-def/provide stx cache sc-cache)
-  (match-define (list type untyped-id orig-id blame-id)
+  (match-define (list type untyped-id orig-id blame-id typed-ctc-id)
                 (contract-def/provide-property stx))
   (define failure-reason #f)
   (define result
@@ -129,7 +129,7 @@
                     (λ (#:reason [reason #f]) (set! failure-reason reason))))
   (syntax-parse stx
     #:literal-sets (kernel-literals)
-    [(define-values (ctc-id) _)
+    [(define-values (ctc-id ty-ctc-id) _)
      ;; no need for ignore, the optimizer doesn't run on this code
      (cond [failure-reason
             #`(define-syntax (#,untyped-id stx)
@@ -149,9 +149,23 @@
                           [#f *ctc]
                           [_ #`(and/c #,*ctc #,user-ctc)]))
             #`(begin #,@defs
+                     #,(when user-ctc
+                         #`(begin
+                             (define ty-ctc-id #,user-ctc)
+                             (define-module-boundary-contract #,typed-ctc-id
+                               #,orig-id ty-ctc-id
+                               #:pos-source #,blame-id
+                               #:srcloc (vector (quote #,(syntax-source orig-id))
+                                        #,(syntax-line orig-id)
+                                        #,(syntax-column orig-id)
+                                        #,(syntax-position orig-id)
+                                        #,(syntax-span orig-id)))))
                      #,@(if maybe-inline-val
                             null
-                            (list #`(define-values (ctc-id) #,ctc)))
+                            (list #`(define-values (ctc-id)
+                                      #,(if user-ctc
+                                            #`(and/c #,ctc #,user-ctc)
+                                            ctc))))
                      (define-module-boundary-contract #,untyped-id
                        #,orig-id
                        #,(or maybe-inline-val #'ctc-id)
