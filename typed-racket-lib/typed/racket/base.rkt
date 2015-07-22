@@ -22,6 +22,7 @@
          (except-in typed-racket/base-env/base-types-extra Distinction Unit)
          (only-in racket/contract/base
                   [-> ->/c]
+                  ->i
                   >/c))
 (provide (rename-out [define-type-alias define-type])
          (all-from-out typed-racket/base-env/prims)
@@ -29,4 +30,5 @@
          (all-from-out typed-racket/base-env/base-types-extra)
          assert defined? with-type for for*
          ->/c
+         ->i
          >/c)
