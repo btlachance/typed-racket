@@ -937,7 +937,11 @@ the typed racket language.
    (lambda (stx modes)
      (syntax-parse stx
        [(_ [id:id ctc:expr] ...)
+        ;; have to combine-out since I'm not sure how to splice the ids into
+        ;; the position the contract-out was in
         #`(combine-out
            #,@(for/list ([id (syntax->list #'(id ...))]
                          [ctc (syntax->list #'(ctc ...))])
+                (syntax-local-lift-module-end-declaration
+                 (internal #`(ctc-definition-internal #,id #,ctc)))
                 (user-contract-property id ctc)))]))))
