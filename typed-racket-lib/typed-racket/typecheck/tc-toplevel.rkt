@@ -12,7 +12,7 @@
               type-alias-helper signature-env signature-helper)
          (utils tc-utils redirect-contract)
          "provide-handling.rkt" "def-binding.rkt" "tc-structs.rkt"
-         "typechecker.rkt" "internal-forms.rkt" "tc-contract.rkt"
+         "typechecker.rkt" "internal-forms.rkt" "check-contract.rkt"
          (typecheck provide-handling def-binding tc-structs
                     typechecker internal-forms 
                     check-below)
@@ -269,6 +269,11 @@
            (check-below lexical-type expected-type)))
        (register-ignored! #'dviu)
        'no-type]
+      [(define-values () (begin ctc _ ...))
+       #:when (ctc:check-contract-for-property form)
+       (define id (ctc:check-contract-for-property form))
+       (check-contract id #'ctc)
+       'no-type]
       ;; these forms we have been instructed to ignore
       [stx:ignore^
        'no-type]
@@ -290,11 +295,6 @@
       [(define-values (lifted) expr)
        #:when (contract-lifted-property #'expr)
        #:do [(register-ignored! #'expr)]
-       'no-type]
-
-      ;; internals have to come before the (define-values () ...) case
-      [d:contract-definition
-       (tc-contract #'d.id #'d.ctc)
        'no-type]
 
       ;; definitions just need to typecheck their bodies

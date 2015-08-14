@@ -356,7 +356,8 @@
 
   (except-in typed-racket/utils/utils private)
   ;; Needed for bindings of types and TR primitives in expressions
-  (except-in (base-env extra-procs prims base-types base-types-extra)
+  (except-in (base-env extra-procs prims base-types base-types-extra
+                       contract-prims)
     define lambda λ case-lambda for/set for*/set)
   ;; For tests that rely on kw/opt properties
   (prefix-in tr: (only-in (base-env prims) define lambda λ case-lambda))
@@ -3992,6 +3993,7 @@
                (cons x xs))
              (-lst -Symbol)]
 
+
        [tc-e (ann (in-hash (hash)) (Sequenceof Any Any))
              (-seq Univ Univ)]
        [tc-e (ann (in-hash-keys (hash)) (Sequenceof Any))
@@ -4466,6 +4468,24 @@
         [tc-e/t (let: ([x : (Un Flonum Natural) 0.0])
                   (if (not (natural? x)) x 1.0))
                -Flonum]
+       [tc-e (>/c 10) (-Con -Real)]
+       [tc-e any/c (-Con Univ)]
+       [tc-e (string-len/c 3) (-Con -String)]
+       [tc-e (->/c (string-len/c 5))
+             (-Con (t:-> -String))]
+       [tc-e (->/c exact-integer? any/c)
+             (-Con (t:-> -Integer Univ))]
+       [tc-e (->/c (lambda (x) (exact-integer? x)) any/c)
+             (-Con (t:-> -Integer Univ))]
+       [tc-e (let ()
+               (define (int-gt-10 x)
+                 (and (exact-integer? x)
+                      (> 10 x)))
+               (define my-any/c any/c)
+               (->/c my-any/c int-gt-10))
+             (-Con (t:-> Univ -Integer))]
+       [tc-e (->/c (lambda (x) (exact-integer? x)) (</c 5) any/c)
+             (-Con (t:-> -Integer -Real Univ))]
        )
 
   (test-suite

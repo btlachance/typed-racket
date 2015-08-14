@@ -943,5 +943,10 @@ the typed racket language.
            #,@(for/list ([id (syntax->list #'(id ...))]
                          [ctc (syntax->list #'(ctc ...))])
                 (syntax-local-lift-module-end-declaration
-                 (internal #`(ctc-definition-internal #,id #,ctc)))
+                 (ctc:check-contract-for-property
+                  #`(define-values ()
+                     (begin
+                       #,ctc
+                       (values)))
+                  id))
                 (user-contract-property id ctc)))]))))

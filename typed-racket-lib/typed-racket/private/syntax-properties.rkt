@@ -52,6 +52,7 @@
   (ignore-some-expr typechecker:ignore-some)
   (contract-def typechecker:contract-def) ; -> Contract-Def (struct in type-contract.rkt)
   (contract-def/provide typechecker:contract-def/provide)
+  (assume-type typechecker:assume-type)
   (user-contract typechecker:user-contract)
   (external-check typechecker:external-check)
   (casted-expr typechecker:casted-expr) ; Type -> Void, takes the original type of the casted expr
@@ -83,4 +84,9 @@
   (tr:unit:invoke:expr tr:unit:invoke:expr)
   (tr:unit:compound tr:unit:compound)
   (tr:unit:from-context tr:unit:from-context #:mark)
-  (unsafe-provide unsafe-provide #:mark))
+  (unsafe-provide unsafe-provide #:mark)
+  (ctc:check-contract-for ctc:check-contract)
+  (ctc:arrow ctc:arrow #:mark)
+  (ctc:arrow-dom ctc:arrow-dom)
+  (ctc:arrow-rng ctc:arrow-rng #:mark))
+

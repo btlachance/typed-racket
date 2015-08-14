@@ -1,5 +1,5 @@
 #;
-(exn-pred exn:fail:contract? "contract type.*is incompatible with type")
+(exn-pred exn:fail:syntax? "contract is incompatible with type")
 #lang typed/racket
 (provide
  (contract-out

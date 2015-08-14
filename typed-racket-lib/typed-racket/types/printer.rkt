@@ -711,7 +711,9 @@
               [(null? pre-deps) `(#:pre ,(prop->sexp pre))]
               [else `(#:pre ,pre-deps ,(prop->sexp pre))])
           ,(values->sexp rng))]
+    [(Con: t) `(Con ,(t->s t))]
     [else `(Unknown Type: ,(struct->vector type))]))
+
 
 
 

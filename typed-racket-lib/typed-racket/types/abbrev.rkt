@@ -45,6 +45,7 @@
   (make-Prefab (normalize-prefab-key key (length types)) types))
 (define -unit make-Unit)
 (define -signature make-Signature)
+(define -Con make-Con)
 
 (define (-seq . args) (make-Sequence args))
 
