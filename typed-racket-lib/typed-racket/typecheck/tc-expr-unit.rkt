@@ -33,7 +33,7 @@
          (for-syntax racket/base racket/syntax))
 
 (import tc-if^ tc-lambda^ tc-app^ tc-let^ tc-send^ check-subforms^ tc-literal^
-        check-class^ check-unit^ tc-expression^)
+        check-class^ check-unit^ tc-expression^ check-contract^)
 (export tc-expr^)
 
 (define-literal-set tc-expr-literals #:for-label
@@ -143,32 +143,7 @@
       [:assume-type^
        (ret (assume-type-property form))]
       [:ctc:arrow^
-       (define (trawl-for form accessor)
-         (syntax-parse form
-           [stx
-            #:when (accessor #'stx)
-            (list #'stx)]
-           [(forms ...)
-            (apply append (map (lambda (form) (trawl-for form accessor))
-                               (syntax->list #'(forms ...))))]
-           [_ '()]))
-       (define (get-core-type ty)
-         (match ty
-           [(PredicateFilter: (FilterSet: (TypeFilter: t _) fs-)) t]
-           [(Con: t) t]
-           [_ #f]))
-       (define doms
-         (sort (trawl-for form ctc:arrow-dom-property)
-               <
-               #:key ctc:arrow-dom-property))
-       (define rng
-         (first (trawl-for form (syntax-parser
-                                  [:ctc:arrow-rng^ #t]
-                                  [_ #f]))))
-       (define doms-tys (for/list ([dom (in-list doms)])
-                          (get-core-type (tc-expr/t dom))))
-       (define rng-ty (get-core-type (tc-expr/t rng)))
-       (ret (-Con (->* doms-tys rng-ty)))]
+       (tc-arrow-contract form)]
       ;; a TR-annotated class
       [stx:tr:class^
        (check-class form expected)]

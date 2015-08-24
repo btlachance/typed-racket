@@ -1,17 +1,16 @@
-#lang racket/base
-(require "../utils/utils.rkt"
+#lang racket/unit
+(require racket/match
          syntax/parse
-         racket/match
-         (utils tc-utils)
+         "../utils/utils.rkt"
          (env global-env)
-         (base-env contract-prims)
+         (types subtype abbrev tc-result match-expanders union)
+         (utils tc-utils)
          (rep type-rep filter-rep)
-         (typecheck typechecker)
-         (types subtype numeric-tower abbrev tc-result match-expanders union)
-         (prefix-in c: racket/contract))
-(module+ test
-  (require rackunit))
-(provide check-contract)
+         (private syntax-properties)
+         "signatures.rkt")
+
+(import tc-expr^)
+(export check-contract^)
 
 ;; compat? : Type Type -> Boolean
 (define (compat? id-type ctc-type)
@@ -31,16 +30,42 @@
      ;; equal? maybe not necessary, we check subtype in both directions
      (or (equal? s t) (subtype s t) (subtype t s))]
     [(_ _) #f]))
-(module+ test
-  (check-true (compat? -Real (-Con -Integer)))
-  (check-true (compat? -Integer (-Con -Real)))
-  (check-true (compat? (->* (list -Integer) -Integer)
-                       (-Con (->* (list -Real) -Real))))
-  (check-true (compat? (->* (list -Integer) -Integer)
-                       (-Con (->* (list Univ) -Real))))
-  (check-true (compat? (->* (list -Integer) Univ)
-                       (-Con (->* (list Univ) -Integer))))
-  (check-false (compat? (Un) (-Con -String))))
+
+;; TODO: Use this for check-contract, too. Something like:
+;; (-Con (get-core-type t))
+(define (get-core-type ty)
+  (match ty
+    [(PredicateFilter: (FilterSet: (TypeFilter: t _) fs-)) t]
+    [(Con: t) t]
+    [_ (Un)]))
+
+;; trawl-for : syntax (any/c -> any/c) -> (list syntax)
+;; Finds syntaxes that are form/its subforms for which accessor returns a non-#f
+;; value. Very similar to the trawl-for-property in check-class-unit
+(define (trawl-for form accessor)
+  (syntax-parse form
+    [stx
+     #:when (accessor #'stx)
+     (list #'stx)]
+    [(forms ...)
+     (apply append (map (lambda (form) (trawl-for form accessor))
+                        (syntax->list #'(forms ...))))]
+    [_ '()]))
+
+;; tc-arrow-contract : syntax -> (Con t)
+(define (tc-arrow-contract form)
+  (define doms
+    (sort (trawl-for form ctc:arrow-dom-property)
+          <
+          #:key ctc:arrow-dom-property))
+  (define rng
+    (car (trawl-for form (syntax-parser
+                           [:ctc:arrow-rng^ #t]
+                           [_ #f]))))
+  (define doms-tys (for/list ([dom (in-list doms)])
+                     (get-core-type (tc-expr/t dom))))
+  (define rng-ty (get-core-type (tc-expr/t rng)))
+  (ret (-Con (->* doms-tys rng-ty))))
 
 ;; check-contract : identifier syntax -> (void)
 ;; Errors iff the registered type of defn-id isn't compatible with the type of

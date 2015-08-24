@@ -11,6 +11,11 @@
          (prefix-in untyped: racket/contract/base))
 (provide (all-defined-out))
 
+;; The make-variable-like-transformer'd bindings seem like they could just go in
+;; base-env. The bummer there is that we still had to add any/c to the provides
+;; for racket/base; just adding the any/c type didn't make it appear in the base
+;; environment.
+
 (define-syntax any/c
   (make-variable-like-transformer
    (assume-type-property #'untyped:any/c (make-Con Univ))))

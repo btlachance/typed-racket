@@ -12,7 +12,7 @@
               type-alias-helper signature-env signature-helper)
          (utils tc-utils redirect-contract)
          "provide-handling.rkt" "def-binding.rkt" "tc-structs.rkt"
-         "typechecker.rkt" "internal-forms.rkt" "check-contract.rkt"
+         "typechecker.rkt" "internal-forms.rkt"
          (typecheck provide-handling def-binding tc-structs
                     typechecker internal-forms 
                     check-below)
