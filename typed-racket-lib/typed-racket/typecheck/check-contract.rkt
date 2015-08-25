@@ -23,7 +23,7 @@
      (and (andmap compat? s1s t1s)
           (compat? s2 t2))]
     ;; Because we check subtype in both directions, have to explicitly disallow this
-    [(s (Con: t))
+    [(s (or (Con: t) t))
      #:when (or (equal? s (Un)) (equal? t (Un)))
      #f]
     [(s (or (Con: t) t))
