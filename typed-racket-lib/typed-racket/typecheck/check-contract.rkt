@@ -39,33 +39,52 @@
     [(Con: t) t]
     [_ (Un)]))
 
-;; trawl-for : syntax (any/c -> any/c) -> (list syntax)
-;; Finds syntaxes that are form/its subforms for which accessor returns a non-#f
-;; value. Very similar to the trawl-for-property in check-class-unit
-(define (trawl-for form accessor)
+;; trawl-for-doms/rng : syntax (any/c -> any/c) -> (listof syntax)
+;; Finds syntax/subforms for which is-dom/rng? returns a non-#f value. Does not
+;; recur into arrow subforms since those must still be typechecked. Do not call
+;; with an arrow that is also a domain/range, that will infinite loop.
+(define (trawl-for-doms/rng form is-dom/rng?)
   (syntax-parse form
-    [stx
-     #:when (accessor #'stx)
-     (list #'stx)]
+    [_
+     #:when (is-dom/rng? form)
+     (list form)]
     [(forms ...)
-     (apply append (map (lambda (form) (trawl-for form accessor))
-                        (syntax->list #'(forms ...))))]
+     (define-values (arrows non-arrows)
+       (for/fold ([arrows '()]
+                  [non-arrows '()])
+                 ([form (in-list (syntax->list #'(forms ...)))])
+         (syntax-parse form
+           [:ctc:arrow^
+            ;; we only want arrows that match the predicate; e.g. when looking
+            ;; for the rng we have to make sure we don't grab a dom
+            #:when (is-dom/rng? form)
+            (values (cons form arrows) non-arrows)]
+           [:ctc:arrow^
+            (values arrows non-arrows)]
+           [_ (values arrows (cons form non-arrows))])))
+     (for/fold ([doms/rng arrows])
+               ([non-arrow (in-list non-arrows)])
+       (append doms/rng (trawl-for-doms/rng non-arrow is-dom/rng?)))]
     [_ '()]))
 
 ;; tc-arrow-contract : syntax -> (Con t)
 (define (tc-arrow-contract form)
+  (define cleaned-arrow
+    (syntax-property (syntax-property form 'ctc:arrow-rng #f)
+                     'ctc:arrow-dom
+                     #f))
   (define doms
-    (sort (trawl-for form ctc:arrow-dom-property)
+    (sort (trawl-for-doms/rng cleaned-arrow ctc:arrow-dom-property)
           <
           #:key ctc:arrow-dom-property))
   (define rng
-    (car (trawl-for form (syntax-parser
-                           [:ctc:arrow-rng^ #t]
-                           [_ #f]))))
-  (define doms-tys (for/list ([dom (in-list doms)])
-                     (get-core-type (tc-expr/t dom))))
-  (define rng-ty (get-core-type (tc-expr/t rng)))
-  (ret (-Con (->* doms-tys rng-ty))))
+    (car (trawl-for-doms/rng cleaned-arrow
+                             (syntax-parser
+                               [:ctc:arrow-rng^ #t]
+                               [_ #f]))))
+  (ret (-Con (->* (for/list ([dom (in-list doms)])
+                    (get-core-type (tc-expr/t dom)))
+                  (get-core-type (tc-expr/t rng))))))
 
 ;; check-contract : identifier syntax -> (void)
 ;; Errors iff the registered type of defn-id isn't compatible with the type of

@@ -4486,6 +4486,8 @@
              (-Con (t:-> Univ -Integer))]
        [tc-e (->/c (lambda (x) (exact-integer? x)) (</c 5) any/c)
              (-Con (t:-> -Integer -Real Univ))]
+       [tc-e (->/c (->/c exact-integer? any/c) exact-integer?)
+             (-Con (t:-> (t:-> -Integer Univ) -Integer))]
        )
 
   (test-suite
