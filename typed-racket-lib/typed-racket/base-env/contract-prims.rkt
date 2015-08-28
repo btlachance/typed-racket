@@ -32,6 +32,17 @@
   (make-variable-like-transformer
    (assume-type-property #'untyped:</c (-> -Real (make-Con -Real)))))
 
+;; and/c requires us to calculate an intersection, so we can't give it a type
+;; like the make-variable-... usages above
+(define-syntax (and/c stx)
+  (syntax-parse stx
+    #:literals (and/c)
+    [(and/c ctc:expr ...)
+     (ctc:and/c
+      #`(untyped:and/c #,@(for/list ([ctc (in-syntax #'(ctc ...))]
+                                     [idx (in-naturals)])
+                            (ctc:and/c-sub-property ctc idx))))]))
+
 (define-syntax (->/c stx)
   (syntax-parse stx
     #:literals (->/c)

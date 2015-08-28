@@ -4488,6 +4488,16 @@
              (-Con (t:-> -Integer -Real Univ))]
        [tc-e (->/c (->/c exact-integer? any/c) exact-integer?)
              (-Con (t:-> (t:-> -Integer Univ) -Integer))]
+       [tc-e (and/c exact-integer? (</c 5))
+             (-Con -Integer)]
+       [tc-e (and/c real? exact-integer?)
+             (-Con -Integer)]
+       [tc-e (and/c)
+             (-Con Univ)]
+       [tc-e (and/c (and/c exact-integer? real?) exact-integer?)
+             (-Con -Integer)]
+       [tc-e (and/c string? exact-integer?)
+             (-Con (t:Un))]
        )
 
   (test-suite

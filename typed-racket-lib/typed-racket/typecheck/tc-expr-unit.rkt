@@ -144,6 +144,8 @@
        (ret (assume-type-property form))]
       [:ctc:arrow^
        (tc-arrow-contract form)]
+      [:ctc:and/c^
+       (tc-and/c form)]
       ;; a TR-annotated class
       [stx:tr:class^
        (check-class form expected)]

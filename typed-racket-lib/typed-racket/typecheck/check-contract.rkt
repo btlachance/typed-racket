@@ -4,6 +4,8 @@
          "../utils/utils.rkt"
          (env global-env)
          (types subtype abbrev tc-result match-expanders union)
+         (only-in (infer infer)
+                  meet)
          (utils tc-utils)
          (rep type-rep filter-rep)
          (private syntax-properties)
@@ -85,6 +87,29 @@
   (ret (-Con (->* (for/list ([dom (in-list doms)])
                     (get-core-type (tc-expr/t dom)))
                   (get-core-type (tc-expr/t rng))))))
+
+;; trawl-for-subs : syntax -> (list syntax)
+;; Don't call with an and/c that is also is-sub?
+(define (trawl-for-subs form)
+  (syntax-parse form
+    [:ctc:and/c-sub^
+     (list form)]
+    [(forms ...)
+     (for/fold ([subs '()])
+               ([form (in-list (syntax->list #'(forms ...)))])
+       (syntax-parse form
+         [:ctc:and/c^ (cons form subs)]
+         [_ (append subs (trawl-for-subs form))]))]
+    [_ '()]))
+
+;; tc-and/c : syntax -> (Con t)
+(define (tc-and/c form)
+  (define subs (sort (trawl-for-subs (ctc:and/c-sub-property form #f))
+                     <
+                     #:key ctc:and/c-sub-property))
+  (ret (-Con (for/fold ([ty Univ])
+                       ([sub (in-list subs)])
+               (meet (get-core-type (tc-expr/t sub)) ty)))))
 
 ;; check-contract : identifier syntax -> (void)
 ;; Errors iff the registered type of defn-id isn't compatible with the type of

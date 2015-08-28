@@ -87,6 +87,8 @@
   (unsafe-provide unsafe-provide #:mark)
   (ctc:check-contract-for ctc:check-contract)
   (ctc:arrow ctc:arrow #:mark)
-  (ctc:arrow-dom ctc:arrow-dom)
-  (ctc:arrow-rng ctc:arrow-rng #:mark))
+  (ctc:arrow-dom ctc:arrow-dom) ;; contains the position in the domain list
+  (ctc:arrow-rng ctc:arrow-rng #:mark)
+  (ctc:and/c ctc:and/c #:mark)
+  (ctc:and/c-sub ctc:and/c-sub)) ;; contains the position in the and/c
 
