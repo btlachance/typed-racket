@@ -39,6 +39,8 @@
   (match ty
     [(PredicateFilter: (FilterSet: (TypeFilter: t _) fs-)) t]
     [(Con: t) t]
+    ;; See explanation in filter->contract
+    ;[(Function: (list (arr: t (== -Boolean) _ _ _))) t]
     [_ (Un)]))
 
 ;; trawl-for-doms/rng : syntax (any/c -> any/c) -> (listof syntax)
@@ -118,6 +120,10 @@
   (define (filter->contract ty)
     (match ty
       [(PredicateFilter: (FilterSet: (TypeFilter: t _) fs-)) (-Con t)]
+      ;; Can't use t -> Bool functions in place of filter'd functions because of
+      ;; mutation. In CPCF they can permit this because there isn't mutation
+      ;; Additionally, we'd have to require that t is a "base" type
+      ;[(Function: (list (arr: t (== -Boolean) _ _ _))) (-Con t)]
       [_ ty]))
   (unless (compat? (lookup-type defn-id) (filter->contract (tc-expr/t ctc)))
     (tc-error/fields "contract is incompatible with type"
