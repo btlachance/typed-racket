@@ -588,6 +588,9 @@
         [((Distinction: _ _ S) T)
          (cg S T obj)]
 
+        [((Con: S) (Con: T))
+         (cg S T)]
+
         ;; two structs with the same name
         ;; just check pairwise on the fields
         [((Struct: nm _ flds proc _ _) (Struct: nm* _ flds* proc* _ _))

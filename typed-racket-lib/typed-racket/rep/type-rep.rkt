@@ -1174,6 +1174,9 @@
        -Bottom
        (make-Distinction nm id ty))])
 
+;; Contract type
+(def-type Con ([ty Type/c]))
+
 
 ;;************************************************************
 ;; Type Variable tools (i.e. Abstraction/Instantiation)
