@@ -712,9 +712,8 @@
               [else `(#:pre ,pre-deps ,(prop->sexp pre))])
           ,(values->sexp rng))]
     [(Con: t) `(Con ,(t->s t))]
+    [(FlatCon: t) `(FlatCon ,(t->s t))]
     [else `(Unknown Type: ,(struct->vector type))]))
-
-
 
 
 (define-syntax (define-debug-printer stx)

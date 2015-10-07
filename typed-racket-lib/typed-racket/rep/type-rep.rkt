@@ -1176,6 +1176,7 @@
 
 ;; Contract type
 (def-type Con ([ty Type/c]))
+(def-type FlatCon ([ty Type/c]))
 
 
 ;;************************************************************

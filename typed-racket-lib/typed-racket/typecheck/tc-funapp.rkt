@@ -303,6 +303,8 @@
              (length argtys))])]
       [(Distinction: _ _ t)
        (tc/funapp f-stx args-stx t args-res expected)]
+      [(FlatCon: t)
+       (tc/funapp f-stx args-stx (make-pred-ty t) args-res expected)]
       ;; resolve names, polymorphic apps, mu, etc
       [(? resolvable?)
        (tc/funapp f-stx args-stx (resolve-once f-type) args-res expected)]

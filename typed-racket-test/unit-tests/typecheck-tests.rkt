@@ -4517,6 +4517,13 @@
              (-Con (-lst* -Real -String -Real -String))]
        [tc-e (list/c)
              (-Con (-lst*))]
+
+       [tc-e/t (let ()
+                 (: app-any/c (All (a) (-> (FlatCon Any) a Boolean)))
+                 (define (app-any/c any/c x)
+                   (any/c x))
+                 app-any/c)
+               (-poly (a) (t:-> (-FlatCon Univ) a -Boolean))]
        )
 
   (test-suite

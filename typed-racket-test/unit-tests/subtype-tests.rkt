@@ -719,6 +719,8 @@
    [FAIL (-refine/fresh x -Int (-eq (-lexp x) (-lexp 256))) -Byte]
    [FAIL (-refine/fresh x -Int (-leq (-lexp x) (-lexp -1))) -Nat]
 
+   [(-FlatCon -Real) (-Con -Real)]
+
    ))
 
 

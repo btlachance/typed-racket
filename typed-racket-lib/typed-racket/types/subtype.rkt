@@ -356,7 +356,6 @@
           [_ (int-err "what is this?!?! ~a" s)])))
   (not (or (in-hierarchy? s1 s2) (in-hierarchy? s2 s1))))
 
-
 ;;************************************************************
 ;; Values Subtyping
 ;;************************************************************
@@ -791,6 +790,12 @@
      [_ (cond
           [(subtype* A t1* t2 obj)]
           [else (continue<: A t1 t2 obj)])])]
+  ;; XXX Not sure about this yet
+  [(case: FlatCon (FlatCon: t1*))
+   (match t2
+     [(Con: t2*)
+      (subtype* A t1* t2* obj)]
+     [_ (continue<: A t1 t2 obj)])]
   [(case: Ephemeron (Ephemeron: elem1))
    (match t2
      [(Ephemeron: elem2) (subtype* A elem1 elem2)]
