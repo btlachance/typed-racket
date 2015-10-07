@@ -18,19 +18,66 @@
 
 (define-syntax any/c
   (make-variable-like-transformer
-   (assume-type-property #'untyped:any/c (make-Con Univ))))
+   (assume-type-property #'untyped:any/c (-Con Univ))))
 
 (define-syntax string-len/c
   (make-variable-like-transformer
-   (assume-type-property #'untyped:string-len/c (-> -Real (make-Con -String)))))
+   (assume-type-property #'untyped:string-len/c (-> -Real (-Con -String)))))
 
 (define-syntax >/c
   (make-variable-like-transformer
-   (assume-type-property #'untyped:>/c (-> -Real (make-Con -Real)))))
+   (assume-type-property #'untyped:>/c (-> -Real (-Con -Real)))))
 
 (define-syntax </c
   (make-variable-like-transformer
-   (assume-type-property #'untyped:</c (-> -Real (make-Con -Real)))))
+   (assume-type-property #'untyped:</c (-> -Real (-Con -Real)))))
+
+(define-syntax =/c
+  (make-variable-like-transformer
+   (assume-type-property #'untyped:=/c (-> -Real (-Con -Real)))))
+
+(define-syntax <=/c
+  (make-variable-like-transformer
+   (assume-type-property #'untyped:<=/c (-> -Real (-Con -Real)))))
+
+(define-syntax >=/c
+  (make-variable-like-transformer
+   (assume-type-property #'untyped:>=/c (-> -Real (-Con -Real)))))
+
+(define-syntax between/c
+  (make-variable-like-transformer
+   (assume-type-property #'untyped:between/c (-> -Real -Real (-Con -Real)))))
+
+(define-syntax real-in
+  (make-variable-like-transformer
+   (assume-type-property #'untyped:real-in (-> -Real -Real (-Con -Real)))))
+
+(define-syntax integer-in
+  (make-variable-like-transformer
+   (assume-type-property #'untyped:integer-in (-> -Integer -Integer (-Con -Integer)))))
+
+(define-syntax false/c
+  (make-variable-like-transformer
+   (assume-type-property #'untyped:false/c (-Con -False))))
+
+(define-syntax listof
+  (make-variable-like-transformer
+   (assume-type-property #'untyped:listof (-poly (a) (-> (-Con a) (-Con (-lst a)))))))
+
+(define-syntax non-empty-listof
+  (make-variable-like-transformer
+   (assume-type-property #'untyped:non-empty-listof (-poly (a) (-> (-Con a) (-Con (-lst a)))))))
+
+(define-syntax list/c
+  (make-variable-like-transformer
+   (assume-type-property #'untyped:list/c (-polydots (a) (->... (list) ((-Con a) a) (-Con (make-ListDots a 'a)))))))
+
+;; Need type distinction distinguish between flat and non-flat contracts; o/wise
+;; this can't be supported without runtime errors.
+(define-syntax flat-named-contract
+  (make-variable-like-transformer
+   (assume-type-property #'untyped:flat-named-contract
+                         (-poly (a) (-> Univ (-Con a) (-Con a))))))
 
 ;; and/c requires us to calculate an intersection, so we can't give it a type
 ;; like the make-variable-... usages above

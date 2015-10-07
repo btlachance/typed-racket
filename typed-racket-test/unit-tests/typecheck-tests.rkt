@@ -4498,6 +4498,25 @@
              (-Con -Integer)]
        [tc-e (and/c string? exact-integer?)
              (-Con (t:Un))]
+       [tc-e (>/c 10) (-Con -Real)]
+       [tc-e (</c 31) (-Con -Real)]
+       [tc-e (=/c 13) (-Con -Real)]
+       [tc-e (<=/c 24) (-Con -Real)]
+       [tc-e (>=/c 43) (-Con -Real)]
+       [tc-e (between/c 13 31) (-Con -Real)]
+       [tc-e (real-in 24 43) (-Con -Real)]
+       [tc-e (integer-in 17 71) (-Con -Integer)]
+       [tc-e false/c (-Con -False)]
+       [tc-e (flat-named-contract 'positive? (>/c 0))
+             (-Con -Real)]
+       [tc-e (real-in 5 10)
+             (-Con -Real)]
+       [tc-e (listof (>/c 5))
+             (-Con (-lst -Real))]
+       [tc-e (list/c (>/c 5) (string-len/c 10) (</c 10) (string-len/c 5))
+             (-Con (-lst* -Real -String -Real -String))]
+       [tc-e (list/c)
+             (-Con (-lst*))]
        )
 
   (test-suite
