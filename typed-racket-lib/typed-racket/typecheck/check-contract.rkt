@@ -9,26 +9,34 @@
          (utils tc-utils)
          (rep type-rep filter-rep)
          (private syntax-properties)
-         "signatures.rkt")
+         "signatures.rkt"
+         (for-syntax racket/base))
 
 (import tc-expr^)
 (export check-contract^)
+
+(define-match-expander Con*:
+  (lambda (stx)
+    (syntax-case stx ()
+      [(_ t)
+       #'(or (? FlatCon? (app FlatCon-ty t))
+             (? Con? (app Con-ty t)))])))
 
 ;; compat? : Type Type -> Boolean
 (define (compat? id-type ctc-type)
   (match* (id-type ctc-type)
     [(_
-      (Con: (== Univ)))
+      (Con*: (== Univ)))
       #t]
     [((Function: (list (arr: s1s s2 _ _ _)))
-      (Con: (Function: (list (arr: t1s t2 _ _ _)))))
+      (Con*: (Function: (list (arr: t1s t2 _ _ _)))))
      (and (andmap compat? s1s t1s)
           (compat? s2 t2))]
     ;; Because we check subtype in both directions, have to explicitly disallow this
-    [(s (or (Con: t) t))
+    [(s (or (Con*: t) t))
      #:when (or (equal? s (Un)) (equal? t (Un)))
      #f]
-    [(s (or (Con: t) t))
+    [(s (or (Con*: t) t))
      ;; equal? maybe not necessary, we check subtype in both directions
      (or (equal? s t) (subtype s t) (subtype t s))]
     [(_ _) #f]))
@@ -38,7 +46,7 @@
 (define (get-core-type ty)
   (match ty
     [(PredicateFilter: (FilterSet: (TypeFilter: t _) fs-)) t]
-    [(Con: t) t]
+    [(Con*: t) t]
     ;; See explanation in filter->contract
     ;[(Function: (list (arr: t (== -Boolean) _ _ _))) t]
     [_ (Un)]))

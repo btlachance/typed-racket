@@ -592,6 +592,8 @@
          (cg S T)]
         [((FlatCon: S) (FlatCon: T))
          (cg S T)]
+        [((FlatCon: S) (Con: T))
+         (cg S T)]
 
         ;; two structs with the same name
         ;; just check pairwise on the fields

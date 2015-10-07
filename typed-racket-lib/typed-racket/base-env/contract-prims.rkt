@@ -18,47 +18,47 @@
 
 (define-syntax any/c
   (make-variable-like-transformer
-   (assume-type-property #'untyped:any/c (-Con Univ))))
+   (assume-type-property #'untyped:any/c (-FlatCon Univ))))
 
 (define-syntax string-len/c
   (make-variable-like-transformer
-   (assume-type-property #'untyped:string-len/c (-> -Real (-Con -String)))))
+   (assume-type-property #'untyped:string-len/c (-> -Real (-FlatCon -String)))))
 
 (define-syntax >/c
   (make-variable-like-transformer
-   (assume-type-property #'untyped:>/c (-> -Real (-Con -Real)))))
+   (assume-type-property #'untyped:>/c (-> -Real (-FlatCon -Real)))))
 
 (define-syntax </c
   (make-variable-like-transformer
-   (assume-type-property #'untyped:</c (-> -Real (-Con -Real)))))
+   (assume-type-property #'untyped:</c (-> -Real (-FlatCon -Real)))))
 
 (define-syntax =/c
   (make-variable-like-transformer
-   (assume-type-property #'untyped:=/c (-> -Real (-Con -Real)))))
+   (assume-type-property #'untyped:=/c (-> -Real (-FlatCon -Real)))))
 
 (define-syntax <=/c
   (make-variable-like-transformer
-   (assume-type-property #'untyped:<=/c (-> -Real (-Con -Real)))))
+   (assume-type-property #'untyped:<=/c (-> -Real (-FlatCon -Real)))))
 
 (define-syntax >=/c
   (make-variable-like-transformer
-   (assume-type-property #'untyped:>=/c (-> -Real (-Con -Real)))))
+   (assume-type-property #'untyped:>=/c (-> -Real (-FlatCon -Real)))))
 
 (define-syntax between/c
   (make-variable-like-transformer
-   (assume-type-property #'untyped:between/c (-> -Real -Real (-Con -Real)))))
+   (assume-type-property #'untyped:between/c (-> -Real -Real (-FlatCon -Real)))))
 
 (define-syntax real-in
   (make-variable-like-transformer
-   (assume-type-property #'untyped:real-in (-> -Real -Real (-Con -Real)))))
+   (assume-type-property #'untyped:real-in (-> -Real -Real (-FlatCon -Real)))))
 
 (define-syntax integer-in
   (make-variable-like-transformer
-   (assume-type-property #'untyped:integer-in (-> -Integer -Integer (-Con -Integer)))))
+   (assume-type-property #'untyped:integer-in (-> -Integer -Integer (-FlatCon -Integer)))))
 
 (define-syntax false/c
   (make-variable-like-transformer
-   (assume-type-property #'untyped:false/c (-Con -False))))
+   (assume-type-property #'untyped:false/c (-FlatCon -False))))
 
 (define-syntax listof
   (make-variable-like-transformer
@@ -77,7 +77,7 @@
 (define-syntax flat-named-contract
   (make-variable-like-transformer
    (assume-type-property #'untyped:flat-named-contract
-                         (-poly (a) (-> Univ (-Con a) (-Con a))))))
+                         (-poly (a) (-> Univ (-FlatCon a) (-FlatCon a))))))
 
 ;; and/c requires us to calculate an intersection, so we can't give it a type
 ;; like the make-variable-... usages above

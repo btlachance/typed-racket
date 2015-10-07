@@ -3993,7 +3993,6 @@
                (cons x xs))
              (-lst -Symbol)]
 
-
        [tc-e (ann (in-hash (hash)) (Sequenceof Any Any))
              (-seq Univ Univ)]
        [tc-e (ann (in-hash-keys (hash)) (Sequenceof Any))
@@ -4469,8 +4468,8 @@
                   (if (not (natural? x)) x 1.0))
                -Flonum]
        [tc-e (>/c 10) (-Con -Real)]
-       [tc-e any/c (-Con Univ)]
-       [tc-e (string-len/c 3) (-Con -String)]
+       [tc-e any/c (-FlatCon Univ)]
+       [tc-e (string-len/c 3) (-FlatCon -String)]
        [tc-e (->/c (string-len/c 5))
              (-Con (t:-> -String))]
        [tc-e (->/c exact-integer? any/c)
@@ -4498,19 +4497,19 @@
              (-Con -Integer)]
        [tc-e (and/c string? exact-integer?)
              (-Con (t:Un))]
-       [tc-e (>/c 10) (-Con -Real)]
-       [tc-e (</c 31) (-Con -Real)]
-       [tc-e (=/c 13) (-Con -Real)]
-       [tc-e (<=/c 24) (-Con -Real)]
-       [tc-e (>=/c 43) (-Con -Real)]
-       [tc-e (between/c 13 31) (-Con -Real)]
-       [tc-e (real-in 24 43) (-Con -Real)]
-       [tc-e (integer-in 17 71) (-Con -Integer)]
-       [tc-e false/c (-Con -False)]
+       [tc-e (>/c 10) (-FlatCon -Real)]
+       [tc-e (</c 31) (-FlatCon -Real)]
+       [tc-e (=/c 13) (-FlatCon -Real)]
+       [tc-e (<=/c 24) (-FlatCon -Real)]
+       [tc-e (>=/c 43) (-FlatCon -Real)]
+       [tc-e (between/c 13 31) (-FlatCon -Real)]
+       [tc-e (real-in 24 43) (-FlatCon -Real)]
+       [tc-e (integer-in 17 71) (-FlatCon -Integer)]
+       [tc-e false/c (-FlatCon -False)]
        [tc-e (flat-named-contract 'positive? (>/c 0))
-             (-Con -Real)]
+             (-FlatCon -Real)]
        [tc-e (real-in 5 10)
-             (-Con -Real)]
+             (-FlatCon -Real)]
        [tc-e (listof (>/c 5))
              (-Con (-lst -Real))]
        [tc-e (list/c (>/c 5) (string-len/c 10) (</c 10) (string-len/c 5))
