@@ -16,25 +16,39 @@
 ;; for racket/base; just adding the any/c type didn't make it appear in the base
 ;; environment.
 
+;; Need type distinction distinguish between flat and non-flat contracts; o/wise
+;; this can't be supported without runtime errors.
+(define-syntax flat-named-contract
+  (make-variable-like-transformer
+   (assume-type-property #'untyped:flat-named-contract
+                         (-poly (a) (-> Univ (-FlatCon a) (-FlatCon a))))))
+
 (define-syntax any/c
   (make-variable-like-transformer
    (assume-type-property #'untyped:any/c (-FlatCon Univ))))
 
-(define-syntax string-len/c
+;; if this is a (FlatCon None) then compatibility will reject it, but making it
+;; a (FlatCon Univ) doesn't seem "right." (FlatCon None) seems pretty useless
+;; though, so Univ seems more appropriate.
+(define-syntax none/c
   (make-variable-like-transformer
-   (assume-type-property #'untyped:string-len/c (-> -Real (-FlatCon -String)))))
+   (assume-type-property #'untyped:none/c (-FlatCon Univ))))
 
-(define-syntax >/c
+(define-syntax not/c
   (make-variable-like-transformer
-   (assume-type-property #'untyped:>/c (-> -Real (-FlatCon -Real)))))
+   (assume-type-property #'untyped:not/c (-poly (a) (-> (-FlatCon a) (-FlatCon a))))))
+
+(define-syntax =/c
+  (make-variable-like-transformer
+   (assume-type-property #'untyped:=/c (-> -Real (-FlatCon -Real)))))
 
 (define-syntax </c
   (make-variable-like-transformer
    (assume-type-property #'untyped:</c (-> -Real (-FlatCon -Real)))))
 
-(define-syntax =/c
+(define-syntax >/c
   (make-variable-like-transformer
-   (assume-type-property #'untyped:=/c (-> -Real (-FlatCon -Real)))))
+   (assume-type-property #'untyped:>/c (-> -Real (-FlatCon -Real)))))
 
 (define-syntax <=/c
   (make-variable-like-transformer
@@ -56,9 +70,22 @@
   (make-variable-like-transformer
    (assume-type-property #'untyped:integer-in (-> -Integer -Integer (-FlatCon -Integer)))))
 
+(define-syntax string-len/c
+  (make-variable-like-transformer
+   (assume-type-property #'untyped:string-len/c (-> -Real (-FlatCon -String)))))
+
 (define-syntax false/c
   (make-variable-like-transformer
    (assume-type-property #'untyped:false/c (-FlatCon -False))))
+
+;; one-of/c
+;; symbols
+;; vectorof
+;; vector-immutableof
+;; vector/c
+;; vector-immutable/c
+;; box/c
+;; box-immutable/c
 
 (define-syntax listof
   (make-variable-like-transformer
@@ -68,16 +95,30 @@
   (make-variable-like-transformer
    (assume-type-property #'untyped:non-empty-listof (-poly (a) (-> (-Con a) (-Con (-lst a)))))))
 
+;; list*of
+;; cons/c
+;; cons/dc
+
 (define-syntax list/c
   (make-variable-like-transformer
    (assume-type-property #'untyped:list/c (-polydots (a) (->... (list) ((-Con a) a) (-Con (make-ListDots a 'a)))))))
 
-;; Need type distinction distinguish between flat and non-flat contracts; o/wise
-;; this can't be supported without runtime errors.
-(define-syntax flat-named-contract
-  (make-variable-like-transformer
-   (assume-type-property #'untyped:flat-named-contract
-                         (-poly (a) (-> Univ (-FlatCon a) (-FlatCon a))))))
+;; struct/c
+;; struct/dc
+;; parameter/c
+;; procedure-arity-includes/c
+;; hash/c
+;; hash/dc
+;; channel/c
+;; prompt-tag/c
+;; continuation-mark-key/c
+;; evt/c
+;; flat-rec-contract
+;; flat-murec-contract
+;; any
+;; promise/c
+;; flat-contract
+;; flat-contract-predicate
 
 ;; and/c requires us to calculate an intersection, so we can't give it a type
 ;; like the make-variable-... usages above
