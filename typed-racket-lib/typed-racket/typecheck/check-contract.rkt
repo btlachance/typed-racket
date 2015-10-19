@@ -99,22 +99,29 @@
                   (get-core-type (tc-expr/t rng))))))
 
 ;; trawl-for-subs : syntax -> (list syntax)
-;; Don't call with an and/c that is also is-sub?
-(define (trawl-for-subs form)
+;; Don't call with a dont-recur? that is also is-sub?
+(define (trawl-for-subs form dont-recur? is-sub?)
   (syntax-parse form
-    [:ctc:and/c-sub^
+    [_
+     #:when (is-sub? form)
      (list form)]
     [(forms ...)
      (for/fold ([subs '()])
                ([form (in-list (syntax->list #'(forms ...)))])
        (syntax-parse form
-         [:ctc:and/c^ (cons form subs)]
-         [_ (append subs (trawl-for-subs form))]))]
+         [_
+          #:when (and (dont-recur? form)
+                      (is-sub? form))
+          (cons form subs)]
+         [_ (append subs (trawl-for-subs form dont-recur? is-sub?))]))]
     [_ '()]))
 
 ;; tc-and/c : syntax -> (Con t)
 (define (tc-and/c form)
-  (define subs (sort (trawl-for-subs (ctc:and/c-sub-property form #f))
+  (define subs (sort (trawl-for-subs (ctc:and/c-sub-property form #f)
+                                     (syntax-parser [:ctc:and/c^ #t]
+                                                    [_ #f])
+                                     ctc:and/c-sub-property)
                      <
                      #:key ctc:and/c-sub-property))
   (ret (-Con (for/fold ([ty Univ])
