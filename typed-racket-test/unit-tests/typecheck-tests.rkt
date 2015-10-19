@@ -4523,6 +4523,18 @@
                    (any/c x))
                  app-any/c)
                (-poly (a) (t:-> (-FlatCon Univ) a -Boolean))]
+       [tc-e (or/c exact-integer?)
+             (-Con -Integer)]
+       [tc-e (or/c (>/c 5) (string-len/c 10))
+             (-Con (t:Un -Real -String))]
+       [tc-e (or/c (>/c 5) exact-integer?)
+             (-Con (t:Un -Real -Integer))]
+       [tc-e (or/c (->/c exact-integer? exact-integer?)
+                   (->/c string? string? string?))
+             (-Con (t:Un (t:-> -Integer -Integer)
+                         (t:-> -String -String -String)))]
+       [tc-e (or/c false/c exact-integer?)
+             (-Con (t:Un -False -Integer))]
        )
 
   (test-suite

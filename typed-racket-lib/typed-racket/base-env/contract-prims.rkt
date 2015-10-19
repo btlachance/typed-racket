@@ -148,6 +148,15 @@
                                      [idx (in-naturals)])
                             (ctc:and/c-sub-property ctc idx))))]))
 
+(define-syntax (or/c stx)
+  (syntax-parse stx
+    #:literals (or/c)
+    [(or/c ctc:expr ...)
+     (ctc:or/c
+      #`(untyped:or/c #,@(for/list ([ctc (in-syntax #'(ctc ...))]
+                                    [idx (in-naturals)])
+                           (ctc:or/c-sub-property ctc idx))))]))
+
 (define-syntax (->/c stx)
   (syntax-parse stx
     #:literals (->/c)

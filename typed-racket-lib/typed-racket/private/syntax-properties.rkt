@@ -90,5 +90,7 @@
   (ctc:arrow-dom ctc:arrow-dom) ;; contains the position in the domain list
   (ctc:arrow-rng ctc:arrow-rng #:mark)
   (ctc:and/c ctc:and/c #:mark)
-  (ctc:and/c-sub ctc:and/c-sub)) ;; contains the position in the and/c
+  (ctc:and/c-sub ctc:and/c-sub)
+  (ctc:or/c ctc:or/c #:mark)
+  (ctc:or/c-sub ctc:or/c-sub)) ;; contains the position in the and/c
 

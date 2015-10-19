@@ -5,7 +5,7 @@
          (env global-env)
          (types subtype abbrev tc-result match-expanders union)
          (only-in (infer infer)
-                  meet)
+                  meet join)
          (utils tc-utils)
          (rep type-rep filter-rep)
          (private syntax-properties)
@@ -127,6 +127,18 @@
   (ret (-Con (for/fold ([ty Univ])
                        ([sub (in-list subs)])
                (meet (get-core-type (tc-expr/t sub)) ty)))))
+
+;; tc-or/c : syntax -> (Con t)
+(define (tc-or/c form)
+  (define subs (sort (trawl-for-subs (ctc:or/c-sub-property form #f)
+                                     (syntax-parser [:ctc:or/c^ #t]
+                                                    [_ #f])
+                                     ctc:or/c-sub-property)
+                     <
+                     #:key ctc:or/c-sub-property))
+  (ret (-Con (for/fold ([ty (Un)])
+                       ([sub (in-list subs)])
+               (join (get-core-type (tc-expr/t sub)) ty)))))
 
 ;; check-contract : identifier syntax -> (void)
 ;; Errors iff the registered type of defn-id isn't compatible with the type of
