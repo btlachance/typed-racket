@@ -5,7 +5,7 @@
                      racket/sequence
                      syntax/parse
                      syntax/transformer
-                     (types abbrev numeric-tower)
+                     (types abbrev numeric-tower union)
                      (rep type-rep)
                      (private syntax-properties))
          (prefix-in untyped: racket/contract/base))
@@ -70,6 +70,10 @@
   (make-variable-like-transformer
    (assume-type-property #'untyped:integer-in (-> -Integer -Integer (-FlatCon -Integer)))))
 
+(define-syntax natural-number/c
+  (make-variable-like-transformer
+   (assume-type-property #'untyped:natural-number/c (-FlatCon -Nat))))
+
 (define-syntax string-len/c
   (make-variable-like-transformer
    (assume-type-property #'untyped:string-len/c (-> -Real (-FlatCon -String)))))
@@ -78,10 +82,14 @@
   (make-variable-like-transformer
    (assume-type-property #'untyped:false/c (-FlatCon -False))))
 
+(define-syntax printable/c
+  (make-variable-like-transformer
+   (assume-type-property #'untyped:printable/c (-FlatCon Univ))))
+
 ;; one-of/c
 ;; symbols
 ;; vectorof
-;; vector-immutableof
+;; vector-immutableof (tricky, TR doesn't have immutable vectors)
 ;; vector/c
 ;; vector-immutable/c
 ;; box/c
@@ -95,13 +103,22 @@
   (make-variable-like-transformer
    (assume-type-property #'untyped:non-empty-listof (-poly (a) (-> (-Con a) (-Con (-lst a)))))))
 
-;; list*of
-;; cons/c
+(define-syntax list*of
+  (make-variable-like-transformer
+   (assume-type-property #'untyped:list*of (-poly (a) (-> (-Con a) (-Con (-mu x (-pair a (Un a x)))))))))
+
+(define-syntax cons/c
+  (make-variable-like-transformer
+   (assume-type-property #'untyped:cons/c (-poly (a b) (-> (-Con a) (-Con b) (-Con (-pair a b)))))))
 ;; cons/dc
 
 (define-syntax list/c
   (make-variable-like-transformer
    (assume-type-property #'untyped:list/c (-polydots (a) (->... (list) ((-Con a) a) (-Con (make-ListDots a 'a)))))))
+
+(define-syntax syntax/c
+  (make-variable-like-transformer
+   (assume-type-property #'untyped:syntax/c (-poly (a) (-> (-FlatCon a) (-FlatCon (-Syntax a)))))))
 
 ;; struct/c
 ;; struct/dc
