@@ -4535,6 +4535,8 @@
                          (t:-> -String -String -String)))]
        [tc-e (or/c false/c exact-integer?)
              (-Con (t:Un -False -Integer))]
+       [tc-e (symbols 'foo 'bar 'baz)
+             (-Con -Symbol)]
        )
 
   (test-suite

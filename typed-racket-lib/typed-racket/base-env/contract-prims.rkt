@@ -3,13 +3,15 @@
                     in-sequence-forever)
          (for-syntax racket/base
                      racket/sequence
+                     racket/syntax
                      syntax/parse
                      syntax/transformer
                      (types abbrev numeric-tower union)
                      (rep type-rep)
                      (private syntax-properties))
          (prefix-in untyped: racket/contract/base))
-(provide (all-defined-out))
+(provide (except-out (all-defined-out)
+                     define-contract))
 
 ;; The make-variable-like-transformer'd bindings seem like they could just go in
 ;; base-env. The bummer there is that we still had to add any/c to the provides
@@ -119,6 +121,16 @@
 (define-syntax syntax/c
   (make-variable-like-transformer
    (assume-type-property #'untyped:syntax/c (-poly (a) (-> (-FlatCon a) (-FlatCon (-Syntax a)))))))
+(define-syntax (define-contract stx)
+  (define-syntax-class def
+    (pattern [ctc:identifier ty]
+             #:with untyped-ctc (format-id stx "untyped:~a" #'ctc)))
+  (syntax-parse stx
+    [(_  :def ...)
+     #'(begin
+         (define-syntax ctc
+           (make-variable-like-transformer
+            (assume-type-property #'untyped-ctc ty))) ...)]))
 
 ;; struct/c
 ;; struct/dc
@@ -136,6 +148,8 @@
 ;; promise/c
 ;; flat-contract
 ;; flat-contract-predicate
+(define-contract
+  [symbols (->* (list) -Symbol (-Con -Symbol))])
 
 ;; and/c requires us to calculate an intersection, so we can't give it a type
 ;; like the make-variable-... usages above
