@@ -144,6 +144,8 @@
        (ret (assume-type-property form))]
       [:ctc:arrow^
        (tc-arrow-contract form)]
+      [:ctc:arrow-i^
+       (tc-arrow-i-contract form)]
       [:ctc:and/c^
        (tc-and/c form)]
       [:ctc:or/c^

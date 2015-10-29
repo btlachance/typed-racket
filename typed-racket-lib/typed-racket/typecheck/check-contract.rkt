@@ -1,8 +1,13 @@
 #lang racket/unit
 (require racket/match
+         racket/dict
+         racket/list
+         racket/pretty
+         racket/sequence
+         syntax/id-table
          syntax/parse
          "../utils/utils.rkt"
-         (env global-env)
+         (env global-env type-alias-helper type-env-structs lexical-env)
          (types subtype abbrev tc-result match-expanders union)
          (only-in (infer infer)
                   meet join)
@@ -51,11 +56,13 @@
     ;[(Function: (list (arr: t (== -Boolean) _ _ _))) t]
     [_ (Un)]))
 
-;; trawl-for-doms/rng : syntax (any/c -> any/c) -> (listof syntax)
+;; trawl-for-doms/rng : syntax predicate predicate -> (listof syntax)
 ;; Finds syntax/subforms for which is-dom/rng? returns a non-#f value. Does not
-;; recur into arrow subforms since those must still be typechecked. Do not call
-;; with an arrow that is also a domain/range, that will infinite loop.
-(define (trawl-for-doms/rng form is-dom/rng?)
+;; recur into arrow subforms, according to is-arrow? since those must still be
+;; typechecked. Do not call with an arrow that is also a domain/range, that will
+;; infinite loop.
+(define (trawl-for-doms/rng form is-dom/rng? is-arrow?)
+  #;(pretty-print (syntax->datum form))
   (syntax-parse form
     [_
      #:when (is-dom/rng? form)
@@ -66,37 +73,113 @@
                   [non-arrows '()])
                  ([form (in-list (syntax->list #'(forms ...)))])
          (syntax-parse form
-           [:ctc:arrow^
+           [_
             ;; we only want arrows that match the predicate; e.g. when looking
             ;; for the rng we have to make sure we don't grab a dom
-            #:when (is-dom/rng? form)
+            #:when (and (is-arrow? form) (is-dom/rng? form))
             (values (cons form arrows) non-arrows)]
-           [:ctc:arrow^
+           [_
+            #:when (is-arrow? form)
             (values arrows non-arrows)]
            [_ (values arrows (cons form non-arrows))])))
      (for/fold ([doms/rng arrows])
                ([non-arrow (in-list non-arrows)])
-       (append doms/rng (trawl-for-doms/rng non-arrow is-dom/rng?)))]
+       (append doms/rng (trawl-for-doms/rng non-arrow is-dom/rng? is-arrow?)))]
     [_ '()]))
 
 ;; tc-arrow-contract : syntax -> (Con t)
 (define (tc-arrow-contract form)
   (define cleaned-arrow
-    (syntax-property (syntax-property form 'ctc:arrow-rng #f)
-                     'ctc:arrow-dom
-                     #f))
+    (syntax-property (syntax-property form 'ctc:arrow-rng #f) 'ctc:arrow-dom #f))
+  (define is-arrow? (syntax-parser [:ctc:arrow^ #t] [_ #f]))
   (define doms
-    (sort (trawl-for-doms/rng cleaned-arrow ctc:arrow-dom-property)
-          <
-          #:key ctc:arrow-dom-property))
-  (define rng
-    (car (trawl-for-doms/rng cleaned-arrow
-                             (syntax-parser
-                               [:ctc:arrow-rng^ #t]
-                               [_ #f]))))
-  (ret (-Con (->* (for/list ([dom (in-list doms)])
+    (trawl-for-doms/rng cleaned-arrow ctc:arrow-dom-property is-arrow?))
+  (define sorted-doms (sort doms < #:key ctc:arrow-dom-property))
+  (define is-rng? (syntax-parser [:ctc:arrow-rng^ #t] [_ #f]))
+  (define rng (car (trawl-for-doms/rng cleaned-arrow is-rng? is-arrow?)))
+  (ret (-Con (->* (for/list ([dom (in-list sorted-doms)])
                     (get-core-type (tc-expr/t dom)))
                   (get-core-type (tc-expr/t rng))))))
+
+;; tc-arrow-i-contract : syntax -> (Con t)
+(define (tc-arrow-i-contract form)
+  (define dom-info ctc:arrow-i-dom-property)
+  (define (dom-index dom) (first (dom-info dom)))
+  (define (dom-id dom) (second (dom-info dom)))
+  (define (dom-ctc dom) dom)
+  (define (dom-deps dom) (fourth (dom-info dom)))
+
+  (define cleaned-arrow-i
+    (ctc:arrow-i-dom-property (ctc:arrow-i-rng-property form #f) #f))
+  (define is-arrow-i? (syntax-parser [:ctc:arrow-i^ #t] [_ #f]))
+  (define dom-infos* (trawl-for-doms/rng cleaned-arrow-i ctc:arrow-i-dom-property is-arrow-i?))
+  (define dom-infos (remove-duplicates dom-infos* free-identifier=? #:key dom-id))
+  (define doms
+    (map
+    dom-id
+    dom-infos))
+
+  ;; (list (list id dep ...) ...)
+  (define dep-map (for/list ([info (in-list dom-infos)])
+                    (define id (dom-id info))
+                    (define deps (dom-deps info))
+                    (cons id deps)))
+  (define topo-sorted-dom-ids
+    (reverse (flatten (find-strongly-connected-type-aliases dep-map))))
+
+  (define dom-ctcs-by-position
+    (for/hash ([info dom-infos])
+      (values (dom-index info) (dom-ctc info))))
+
+  (define dom-positions-by-id
+    (for/hash ([info dom-infos])
+      (values (dom-id info) (dom-index info))))
+
+  (define dom-surface-deps-by-id
+    (for/hash ([info dom-infos])
+      (values (dom-id info) (dom-deps info))))
+
+  (define doms-checked-env
+    (for/fold ([env (lexical-env)])
+              ([dom-id (in-list topo-sorted-dom-ids)])
+      (define position (hash-ref dom-positions-by-id dom-id))
+      (define surface-deps (hash-ref dom-surface-deps-by-id dom-id))
+      (define ctc* (hash-ref dom-ctcs-by-position position))
+      (define-values (expanded-deps ctc)
+        (syntax-parse ctc*
+          ;; ctc is transformed to (begin deps ... ctc) by ->i in contract-prims
+          [(_ deps ... ctc)
+           (values #'(deps ...) #'ctc)]))
+      (define-values (ids tys) (for/lists (ids tys)
+                                          ([surface-dep (in-syntax surface-deps)]
+                                           [expanded-dep (in-syntax expanded-deps)])
+                                 (values expanded-dep (lookup env surface-dep void))))
+      (define env* (extend/values env ids tys))
+      (extend env* dom-id
+              (with-lexical-env env* (get-core-type (tc-expr/t ctc))))))
+  (define rng-ctc*
+    (first (trawl-for-doms/rng cleaned-arrow-i ctc:arrow-i-rng-property is-arrow-i?)))
+  (define-values (expanded-rng-deps rng-ctc)
+    (syntax-parse rng-ctc*
+      [(_ deps ... rng-ctc)
+       (values #'(deps ...) #'rng-ctc)]))
+  (define rng-info (ctc:arrow-i-rng-property rng-ctc*))
+  (define surface-rng-deps (third rng-info))
+  (define-values (rng-ids rng-tys) (for/lists (ids tys)
+                                              ([surface-rng-dep (in-syntax surface-rng-deps)]
+                                               [expanded-rng-dep (in-syntax expanded-rng-deps)])
+                                     (values expanded-rng-dep (lookup doms-checked-env surface-rng-dep void))))
+  (define final-env* (extend/values doms-checked-env rng-ids rng-tys))
+  (define rng-id (first rng-info))
+  (define final-env
+    (extend final-env* rng-id
+            (with-lexical-env final-env* (get-core-type (tc-expr/t rng-ctc)))))
+
+  (define position-sorted-doms (sort doms < #:key (lambda (id) (hash-ref dom-positions-by-id id))))
+  (with-lexical-env final-env
+    (ret (-Con (->* (for/list ([dom (in-list position-sorted-doms)])
+                      (lookup-type/lexical dom))
+                    (lookup-type/lexical rng-id))))))
 
 ;; trawl-for-subs : syntax -> (list syntax)
 ;; Don't call with a dont-recur? that is also is-sub?

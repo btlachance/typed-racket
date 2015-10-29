@@ -4537,6 +4537,12 @@
              (-Con (t:Un -False -Integer))]
        [tc-e (symbols 'foo 'bar 'baz)
              (-Con -Symbol)]
+       ;; The ->i documentation only has number? for x; I don't think that's a
+       ;; good example because >=/c requires real?.
+       [tc-e (->i ([x real?]
+                   [y (x) (>=/c x)])
+                  [result (x y) (>=/c (+ x y))])
+             (-Con (t:-> -Real -Real -Real))]
        )
 
   (test-suite

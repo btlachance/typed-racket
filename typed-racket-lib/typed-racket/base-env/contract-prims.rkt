@@ -101,3 +101,56 @@
                                             [idx (in-naturals)])
                                    (ctc:arrow-dom-property dom idx))
                               #,(ctc:arrow-rng #'rng)))]))
+
+(define-syntax (->i stx)
+  (define-syntax-class id+ctc
+    #:attributes ((deps 1) id ctc)
+    (pattern [id:id ctc]
+             #:attr (deps 1) '())
+    (pattern [id:id (deps:id ...) ctc]))
+  #;(define-splicing-syntax-class dependent-rest
+  (pattern (~seq #:rest :id+ctc)))
+  #;(define-splicing-syntax-class pre-condition
+  (pattern (~seq #:pre (id:id ...) pre-test)))
+  #;(define-splicing-syntax-class post-condition
+  (pattern (~seq #:post (id:id ...) post-test)))
+  (define-syntax-class dependent-range
+    #:attributes ((deps 1) ctc id)
+    (pattern (~literal any)
+             #:attr (deps 1) '()
+             #:attr ctc #'any
+             #:attr id #'_)
+    (pattern :id+ctc))
+
+  (syntax-parse stx
+    #:literals (->i)
+    [(->i (doms:id+ctc ...)
+          rng:dependent-range)
+     (ctc:arrow-i
+      (ignore
+       #`(untyped:->i (#,@(for/list ([dom (in-syntax #'(doms ...))]
+                                     [ctc (in-syntax #'(doms.ctc ...))]
+                                     [name (in-syntax #'(doms.id ...))]
+                                     [deps (in-syntax #'((doms.deps ...) ...))]
+                                     [index (in-naturals)])
+                            ;; ->i doesn't preserve the syntax properties if we
+                            ;; put this on the id+ctc pair; it also doesn't
+                            ;; guarantee that the identifier for the named dom
+                            ;; position will end up in the expanded syntax. The
+                            ;; ctc is most likely to be in the expansion, so
+                            ;; we'll put all the properties there
+                            #`(#,name
+                               #,@(if (> (length (syntax->list deps)) 0)
+                                      (list deps)
+                                      (list))
+                               #,(ctc:arrow-i-dom-property
+                                  #`(begin #,@deps #,ctc)
+                                  (list index name ctc (syntax->list deps))))))
+                      (rng.id
+                       #,@(if (> (length (syntax->list #'(rng.deps ...))) 0)
+                              #'((rng.deps ...))
+                              #'())
+                       #,(ctc:arrow-i-rng-property
+                          #'(begin rng.deps ... rng.ctc)
+                          (list #'rng.id #'rng.ctc (syntax->list #'(rng.deps ...))))))))]))
+

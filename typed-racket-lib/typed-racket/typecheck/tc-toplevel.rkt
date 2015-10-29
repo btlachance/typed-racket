@@ -275,7 +275,7 @@
        (check-contract id #'ctc)
        'no-type]
       ;; these forms we have been instructed to ignore
-      [stx:ignore^
+      [(~and stx:ignore^ (~not :ctc:arrow-i^))
        'no-type]
 
       ;; this is a form that we mostly ignore, but we check some interior parts

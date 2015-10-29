@@ -32,6 +32,7 @@
 (define-signature check-contract^
   ([cond-contracted check-contract (identifier? syntax? . -> . void?)]
    [cond-contracted tc-arrow-contract (syntax? . -> . Type/c)]
+   [cond-contracted tc-arrow-i-contract (syntax? . -> . Type/c)]
    [cond-contracted tc-and/c (syntax? . -> . Type/c)]
    [cond-contracted tc-or/c (syntax? . -> . Type/c)]))
 

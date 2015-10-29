@@ -89,6 +89,14 @@
   (ctc:arrow ctc:arrow #:mark)
   (ctc:arrow-dom ctc:arrow-dom) ;; contains the position in the domain list
   (ctc:arrow-rng ctc:arrow-rng #:mark)
+  (ctc:arrow-i ctc:arrow-i #:mark)
+  ;; TODO: since we're attaching the properties to the id, no need to store
+  ;; the Name field in the dom and rng
+  (ctc:arrow-i-dom ctc:arrow-i-dom) ;; (list Index Name Syntax (list Dep))
+  ;; Have to let the contracts expand, can't just put their syntax in a property
+  (ctc:arrow-i-dom-ctc ctc:arrow-i-dom-ctc) ;; Index
+  (ctc:arrow-i-rng ctc:arrow-i-rng) ;; (list Name Syntax (list Dep))
+  (ctc:arrow-i-rng-ctc ctc:arrow-i-rng-ctc #:mark)
   (ctc:and/c ctc:and/c #:mark)
   (ctc:and/c-sub ctc:and/c-sub)
   (ctc:or/c ctc:or/c #:mark)
