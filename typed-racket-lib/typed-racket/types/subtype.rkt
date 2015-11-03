@@ -790,12 +790,23 @@
      [_ (cond
           [(subtype* A t1* t2 obj)]
           [else (continue<: A t1 t2 obj)])])]
+  ;; XXX Fix alphabetical order
   ;; XXX Not sure about this yet
   [(case: FlatCon (FlatCon: t1*))
    (match t2
      [(Con: t2*)
       (subtype* A t1* t2* obj)]
      [_ (continue<: A t1 t2 obj)])]
+  ;; XXX Ugh, this change was before the Filter->prop change; hopefully
+  ;; it's OK to change Filter->Prop in later part of rebase
+  [(case: PredicateFilter (PredicateFilter: (FilterSet: (TypeFilter: t1* _) _)))
+   (match t2
+     [((FlatCon: t2*))
+      (subtype-seq A
+                   (subtype* A t1 (-> Univ Univ) obj)
+                   (subtype* A t1* t2* obj))]
+     [_ (continue<: A t1 t2 obj)])]
+  
   [(case: Ephemeron (Ephemeron: elem1))
    (match t2
      [(Ephemeron: elem2) (subtype* A elem1 elem2)]

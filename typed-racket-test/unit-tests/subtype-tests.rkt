@@ -720,7 +720,13 @@
    [FAIL (-refine/fresh x -Int (-leq (-lexp x) (-lexp -1))) -Nat]
 
    [(-FlatCon -Real) (-Con -Real)]
-
+   [(-> Univ -Boolean : (-FS (-filter -Integer 0) -top))
+    (-FlatCon -Integer)]
+   [FAIL
+    (-> Univ -Boolean : (-FS (-filter -Real 0) -top))
+    (-FlatCon -Integer)]
+   [(-> Univ -Boolean : (-FS (-filter -Integer 0) -top))
+    (-FlatCon -Real)]
    ))
 
 

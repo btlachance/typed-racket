@@ -28,7 +28,7 @@
   [flat-named-contract (-poly (a) (-> Univ (-FlatCon a) (-FlatCon a)))]
   [any/c (-FlatCon Univ)]
   [none/c (-FlatCon Univ)]
-  [not/c (-poly (a) (-> (-FlatCon a) (-FlatCon a)))]
+  [not/c (-poly (a) (-> (-FlatCon a) (-FlatCon Univ)))]
   [=/c (-> -Real (-FlatCon -Real))]
   [</c (-> -Real (-FlatCon -Real))]
   [>/c (-> -Real (-FlatCon -Real))]

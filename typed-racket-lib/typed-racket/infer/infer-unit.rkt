@@ -594,6 +594,9 @@
          (cg S T)]
         [((FlatCon: S) (Con: T))
          (cg S T)]
+        [((PredicateFilter: (FilterSet: (TypeFilter: S _) _))
+          (FlatCon: T))
+         (cg S T)]
 
         ;; two structs with the same name
         ;; just check pairwise on the fields

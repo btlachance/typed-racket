@@ -4537,6 +4537,9 @@
              (-Con (t:Un -False -Integer))]
        [tc-e (symbols 'foo 'bar 'baz)
              (-Con -Symbol)]
+       [tc-e (not/c (lambda (x) (and (exact-integer? x)
+                                     (>= x 10))))
+             (-FlatCon Univ)]
        ;; The ->i documentation only has number? for x; I don't think that's a
        ;; good example because >=/c requires real?.
        [tc-e (->i ([x real?]
