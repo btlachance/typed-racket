@@ -4546,6 +4546,46 @@
                    [y (x) (>=/c x)])
                   [result (x y) (>=/c (+ x y))])
              (-Con (t:-> -Real -Real -Real))]
+       ;; Tests for various literals that Racket treats as contracts. This
+       ;; should be all of the cases covered by coerce-contract/f in guts. list?
+       ;; and pair?  are special-cased in guts, yet they're handled in TR by the
+       ;; more general predicate coercion
+       [tc-e (or/c list?)
+             (-Con (-lst Univ))]
+       [tc-e (or/c pair?)
+             (-Con (-pair Univ Univ))]
+       ;; The literal/predicate for the empty list seem like they should have
+       ;; type (Con (Listof Any)), but that's not how it's currently
+       ;; handled. Note: for contract compatibility it doesn't matter if it's
+       ;; (Con Null) or (Con (Listof Any)); once these are flat contracts,
+       ;; though, their current "core" type means their only type-correct
+       ;; argument is '()
+       [tc-e (or/c null?)
+             (-Con -Null)]
+       [tc-e (or/c (list))
+             (-Con -Null)]
+       ;; Typechecking symbols/keywords gives their singleton type, so that gets
+       ;; carried over into the contract type. Things like chars and strings,
+       ;; though, get their "top" type. This has the same issue as the (-Con
+       ;; -Null) cases above.
+       [tc-e (or/c 'a 'b 'c 'λ)
+             (-Con (t:Un (-val 'a) (-val 'b) (-val 'c) (-val 'λ)))]
+       [tc-e (or/c #f #t)
+             (-Con -Boolean)]
+       [tc-e (or/c '#:key '#:words)
+             (-Con (t:Un (-val '#:key) (-val '#:words)))]
+       [tc-e (or/c #\a #\b #\c #\λ)
+             (-Con -Char)]
+       [tc-e (or/c "foo" "bar")
+             (-Con -String)]
+       (tc-e (or/c '#"baz" '#"quux")
+             (-Con -Bytes))
+       [tc-e (or/c 5 6 7)
+             (-Con -PosByte)]
+       [tc-e (or/c #rx"[01]+" #rx"[0123456789A-Fa-f]+")
+             (-Con -String)]
+       [tc-e (or/c #rx#"01234" #rx#"abcd")
+             (-Con -Bytes)]
        ;; and/c and other contract typing rules used to coerce this lambda to a
        ;; (Con Positive-Real), which is bad because we don't refine the type of
        ;; a term when it is monitored by a more-precise contract. Instead we

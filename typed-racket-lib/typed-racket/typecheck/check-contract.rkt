@@ -8,7 +8,7 @@
          syntax/parse
          "../utils/utils.rkt"
          (env global-env type-alias-helper type-env-structs lexical-env)
-         (types subtype abbrev tc-result match-expanders union)
+         (types subtype abbrev tc-result match-expanders union numeric-tower)
          (only-in (infer infer)
                   meet join)
          (utils tc-utils)
@@ -49,11 +49,23 @@
 ;; TODO: Use this for check-contract, too. Something like:
 ;; (-Con (get-core-type t))
 (define (get-core-type ty)
+  (define coercible-simple-value-types
+    (Un -Null -Symbol -Boolean -Keyword -Char -Bytes -String -Number))
   (match ty
     [(PredicateFilter: (FilterSet: (TypeFilter: t _) fs-))
      #:when (subtype ty (-> Univ Univ))
      t]
     [(Con*: t) t]
+    ;; TODO: These should all be interpreted as FlatCon, but we have no control
+    ;; over that via get-core-type. Need to restructure the code to accomodate
+    ;; that.
+    [_
+     #:when (subtype ty coercible-simple-value-types)
+     ty]
+    ;; Because the type of these isn't the core type needed for the contract,
+    ;; they need to be handled differently than coercible-simple-value-types
+    [(== -Regexp) -String]
+    [(== -Byte-Regexp) -Bytes]
     ;; See explanation in filter->contract
     ;[(Function: (list (arr: t (== -Boolean) _ _ _))) t]
     [_ (Un)]))
