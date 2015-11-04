@@ -50,7 +50,9 @@
 ;; (-Con (get-core-type t))
 (define (get-core-type ty)
   (match ty
-    [(PredicateFilter: (FilterSet: (TypeFilter: t _) fs-)) t]
+    [(PredicateFilter: (FilterSet: (TypeFilter: t _) fs-))
+     #:when (subtype ty (-> Univ Univ))
+     t]
     [(Con*: t) t]
     ;; See explanation in filter->contract
     ;[(Function: (list (arr: t (== -Boolean) _ _ _))) t]
@@ -229,7 +231,9 @@
 (define (check-contract defn-id ctc)
   (define (filter->contract ty)
     (match ty
-      [(PredicateFilter: (FilterSet: (TypeFilter: t _) fs-)) (-Con t)]
+      [(PredicateFilter: (FilterSet: (TypeFilter: t _) fs-))
+       #:when (subtype ty (-> Univ Univ))
+       (-Con t)]
       ;; Can't use t -> Bool functions in place of filter'd functions because of
       ;; mutation. In CPCF they can permit this because there isn't mutation
       ;; Additionally, we'd have to require that t is a "base" type

@@ -4546,6 +4546,12 @@
                    [y (x) (>=/c x)])
                   [result (x y) (>=/c (+ x y))])
              (-Con (t:-> -Real -Real -Real))]
+       ;; and/c and other contract typing rules used to coerce this lambda to a
+       ;; (Con Positive-Real), which is bad because we don't refine the type of
+       ;; a term when it is monitored by a more-precise contract. Instead we
+       ;; have to make this a (Con (U)), which can monitor nothing.
+       [tc-e (and/c (lambda: ([x : Real]) (> x 10)))
+             (-Con (t:Un))]
        )
 
   (test-suite
