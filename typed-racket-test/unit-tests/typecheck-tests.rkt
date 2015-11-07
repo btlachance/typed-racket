@@ -4546,6 +4546,16 @@
                    [y (x) (>=/c x)])
                   [result (x y) (>=/c (+ x y))])
              (-Con (t:-> -Real -Real -Real))]
+       [tc-e (->i ([x string?]
+                   [y exact-integer?]
+                   [z boolean?])
+                  [_ string?])
+             (-Con (t:-> -String -Integer -Boolean -String))]
+       [tc-e (->i (#:x [x real?]
+                   [z exact-integer?]
+                   #:y [y (x) (>=/c x)])
+                  [_ string?])
+             (-Con (->key -Integer #:x -Real #t #:y -Real #t -String))]
        ;; Tests for various literals that Racket treats as contracts. This
        ;; should be all of the cases covered by coerce-contract/f in guts. list?
        ;; and pair?  are special-cased in guts, yet they're handled in TR by the

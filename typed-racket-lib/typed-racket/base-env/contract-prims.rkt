@@ -124,7 +124,7 @@
 
   (syntax-parse stx
     #:literals (->i)
-    [(->i (doms:id+ctc ...)
+    [(->i ((~seq (~optional kw:keyword) doms:id+ctc) ...)
           rng:dependent-range)
      (ctc:arrow-i
       (ignore
@@ -132,6 +132,7 @@
                                      [ctc (in-syntax #'(doms.ctc ...))]
                                      [name (in-syntax #'(doms.id ...))]
                                      [deps (in-syntax (attribute doms.deps))]
+                                     [kw (in-list (attribute kw))]
                                      [index (in-naturals)])
                             ;; ->i doesn't preserve the syntax properties if we
                             ;; put this on the id+ctc pair; it also doesn't
@@ -143,7 +144,7 @@
                                #,@(or (and deps (list deps)) (list))
                                #,(ctc:arrow-i-dom-property
                                   #`(begin #,@(or deps (list)) #,ctc)
-                                  (list index name ctc (or deps (list)))))))
+                                  (list index name ctc (or deps (list)) (and kw (syntax-e kw)))))))
                       (rng.id
                        #,@(or (and (attribute rng.deps) (list (attribute rng.deps)))
                               (list))

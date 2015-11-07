@@ -117,11 +117,13 @@
 
 ;; tc-arrow-i-contract : syntax -> (Con t)
 (define (tc-arrow-i-contract form)
+  ;; accessors for dom-info "structure"
   (define dom-info ctc:arrow-i-dom-property)
   (define (dom-index dom) (first (dom-info dom)))
   (define (dom-id dom) (second (dom-info dom)))
   (define (dom-ctc dom) dom)
   (define (dom-deps dom) (fourth (dom-info dom)))
+  (define (dom-kw dom) (fifth (dom-info dom)))
 
   (define cleaned-arrow-i
     (ctc:arrow-i-dom-property (ctc:arrow-i-rng-property form #f) #f))
@@ -190,10 +192,24 @@
             (with-lexical-env final-env* (get-core-type (tc-expr/t rng-ctc)))))
 
   (define position-sorted-doms (sort doms < #:key (lambda (id) (hash-ref dom-positions-by-id id))))
+  (define dom-kws-by-id (for/hash ([info dom-infos])
+                          (values (dom-id info) (dom-kw info))))
+
+  (define (lookup-dom-kw dom)
+    (hash-ref dom-kws-by-id dom))
+  (define-values (kw-doms plain-doms) (partition lookup-dom-kw position-sorted-doms))
+  (define sorted-kw-doms (sort kw-doms keyword<? #:key lookup-dom-kw))
   (with-lexical-env final-env
-    (ret (-Con (->* (for/list ([dom (in-list position-sorted-doms)])
-                      (lookup-type/lexical dom))
-                    (lookup-type/lexical rng-id))))))
+    (ret (-Con (make-Function
+                (list
+                 (make-arr* (for/list ([dom (in-list plain-doms)])
+                              (lookup-type/lexical dom))
+                            (lookup-type/lexical rng-id)
+                            #:rest #f
+                            #:kws (for/list ([kw-dom (in-list sorted-kw-doms)])
+                                    (define kw (hash-ref dom-kws-by-id kw-dom))
+                                    (define ty (lookup-type/lexical kw-dom))
+                                    (make-Keyword kw ty #t)))))))))
 
 ;; trawl-for-subs : syntax -> (list syntax)
 ;; Don't call with a dont-recur? that is also is-sub?
