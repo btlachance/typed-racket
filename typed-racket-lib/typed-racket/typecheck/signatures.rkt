@@ -31,10 +31,10 @@
 
 (define-signature check-contract^
   ([cond-contracted check-contract (identifier? syntax? . -> . void?)]
-   [cond-contracted tc-arrow-contract (syntax? . -> . Type/c)]
-   [cond-contracted tc-arrow-i-contract (syntax? . -> . Type/c)]
-   [cond-contracted tc-and/c (syntax? . -> . Type/c)]
-   [cond-contracted tc-or/c (syntax? . -> . Type/c)]))
+   [cond-contracted tc-arrow-contract (syntax? . -> . full-tc-results/c)]
+   [cond-contracted tc-arrow-i-contract (syntax? . -> . full-tc-results/c)]
+   [cond-contracted tc-and/c (syntax? . -> . full-tc-results/c)]
+   [cond-contracted tc-or/c (syntax? . -> . full-tc-results/c)]))
 
 (define-signature tc-if^
   ([cond-contracted tc/if-twoarm ((syntax? syntax? syntax?) ((or/c tc-results/c #f)) . ->* . full-tc-results/c)]))
