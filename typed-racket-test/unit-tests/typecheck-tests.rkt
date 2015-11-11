@@ -4602,6 +4602,12 @@
        ;; have to make this a (Con (U)), which can monitor nothing.
        [tc-e (and/c (lambda: ([x : Real]) (> x 10)))
              (-Con (t:Un))]
+       [tc-e (and/c exact-integer? (lambda: ([x : Integer]) (> x 0)))
+             (-Con -Integer)]
+       [tc-e (and/c exact-integer? (lambda: ([x : Positive-Integer]) (even? x)))
+             (-Con (t:Un))]
+       [tc-e (and/c exact-integer? (lambda: ([x : String]) (equal? x "foo")))
+             (-Con (t:Un))]
        )
 
   (test-suite

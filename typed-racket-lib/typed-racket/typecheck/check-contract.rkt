@@ -239,7 +239,31 @@
                      #:key ctc:and/c-sub-property))
   (ret (-Con (for/fold ([ty Univ])
                        ([sub (in-list subs)])
-               (meet (get-core-type (tc-expr/t sub)) ty)))))
+               (define (can-refine-ty? s)
+                 (and
+                  ;; Knowing we have a Univ to the left of another contract
+                  ;; doesn't give us any assumptions that we can use; e.g. it
+                  ;; doesn't mean we can use an Integer->Bool function as a
+                  ;; contract.
+                  (not (type-equal? ty Univ))
+                  ;; TODO: remove this case, it's a quick hack to handle the
+                  ;; overlap between the functions we want to handle (T->Bool, T
+                  ;; != Univ) and functions from Any->Bool that have a positive
+                  ;; filter. The TODO below this, about considering using the
+                  ;; meet of the type and the filter, would cover that overlap
+                  ;; cleanly
+                  (not (type-equal? s Univ))
+                  ;; To use a s->Bool function as a contract in and/c, it has to
+                  ;; come after a (Con ty) where ty <: s.
+                  (subtype ty s)))
+               (define domain-ty (tc-expr/t sub))
+               (match domain-ty
+                 [(Function: (list (arr: (list (? can-refine-ty? t)) (Values: (list (Result: -Boolean _ _))) _ _ _)))
+                  ;; TODO: consider taking the meet of t and the positive filter
+                  ;; If t is Integer and the filter says the true branch implies
+                  ;; t is a Positive-Integer, then we should be able to use that
+                  t]
+                 [domain-ty (meet (get-core-type domain-ty) ty)])))))
 
 ;; tc-or/c : syntax -> (Con t)
 (define (tc-or/c form)
