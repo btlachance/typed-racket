@@ -947,6 +947,6 @@ the typed racket language.
                   #`(define-values ()
                      (begin
                        #,ctc
-                       (values)))
+                       #,(ignore #`(values))))
                   id))
                 (user-contract-property id ctc)))]))))
