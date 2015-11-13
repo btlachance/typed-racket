@@ -8,6 +8,7 @@
                      syntax/transformer
                      (types abbrev numeric-tower union)
                      (rep type-rep)
+                     (utils contract-utils)
                      (private syntax-properties))
          (prefix-in untyped: racket/contract/base))
 (provide (except-out (all-defined-out)
@@ -144,13 +145,21 @@
                                #,@(or (and deps (list deps)) (list))
                                #,(ctc:arrow-i-dom-property
                                   #`(begin #,@(or deps (list)) #,ctc)
-                                  (list index name ctc (or deps (list)) (and kw (syntax-e kw)))))))
+                                  (dom-info name
+                                            (or deps (list))
+                                            ctc
+                                            (or (and kw (syntax-e kw))
+                                                index)
+                                            #t)))))
                       (rng.id
                        #,@(or (and (attribute rng.deps) (list (attribute rng.deps)))
                               (list))
                        #,(ctc:arrow-i-rng-property
                           #`(begin #,@(or (attribute rng.deps) (list))
                                    rng.ctc)
-                          (list #'rng.id #'rng.ctc (or (attribute rng.deps)
-                                                       (list))))))))]))
+                          (rng-info #'rng.id
+                                    (or (attribute rng.deps)
+                                        (list))
+                                    #'rng.ctc
+                                    0))))))]))
 
