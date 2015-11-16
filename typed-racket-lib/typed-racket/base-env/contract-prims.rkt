@@ -152,10 +152,14 @@
   (syntax-parse stx
     #:literals (->i)
     [(->i ((~var mand-doms (dom #t)) ...)
+          (~optional ((~var opt-doms (dom #f)) ...))
           rng:dependent-range)
      (ctc:arrow-i
       (ignore
-       #`(untyped:->i (#,@(apply append (map syntax->list (attribute mand-doms.form))))
+       #`(untyped:->i (#,@(apply append (map syntax->list (or (attribute mand-doms.form)
+                                                              (list)))))
+                      (#,@(apply append (map syntax->list (or (attribute opt-doms.form)
+                                                              (list)))))
                       (rng.id
                        #,@(or (and (attribute rng.deps) (list (attribute rng.deps)))
                               (list))

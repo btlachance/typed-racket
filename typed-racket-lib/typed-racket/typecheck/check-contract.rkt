@@ -181,20 +181,23 @@
 
   (define-values (kw-dom-infos plain-dom-infos)
     (partition (lambda (info) (keyword? (dom-info-type info))) dom-infos))
-  (define sorted-plain-dom-infos (sort plain-dom-infos < #:key dom-info-type))
+  (define-values (mandatory-plain-dom-infos optional-plain-dom-infos)
+    (partition dom-info-mandatory? plain-dom-infos))
+  (define sorted-mandatory-plain-dom-infos (sort mandatory-plain-dom-infos < #:key dom-info-type))
+  (define sorted-optional-plain-dom-infos (sort optional-plain-dom-infos < #:key dom-info-type))
   (define sorted-kw-dom-infos (sort kw-dom-infos keyword<? #:key dom-info-type))
   (with-lexical-env final-env
     (ret (-Con (make-Function
-                (list
+                (for/list ([vararg-slice-length (in-range (add1 (length optional-plain-dom-infos)))])
                  (make-arr*
-                  (for/list ([dom (in-list sorted-plain-dom-infos)])
+                  (for/list ([dom (in-list (append sorted-mandatory-plain-dom-infos (take sorted-optional-plain-dom-infos vararg-slice-length)))])
                               (lookup-type/lexical (dom-info-id dom)))
-                            (lookup-type/lexical rng-id)
-                            #:rest #f
-                            #:kws (for/list ([kw-dom (in-list sorted-kw-dom-infos)])
-                                    (define kw (dom-info-type kw-dom))
-                                    (define ty (lookup-type/lexical (dom-info-id kw-dom)))
-                                    (make-Keyword kw ty (dom-info-mandatory? kw-dom))))))))))
+                  (lookup-type/lexical rng-id)
+                  #:rest #f
+                  #:kws (for/list ([kw-dom (in-list sorted-kw-dom-infos)])
+                          (define kw (dom-info-type kw-dom))
+                          (define ty (lookup-type/lexical (dom-info-id kw-dom)))
+                          (make-Keyword kw ty (dom-info-mandatory? kw-dom))))))))))
 
 ;; trawl-for-subs : syntax -> (list syntax)
 ;; Don't call with a dont-recur? that is also is-sub?

@@ -4546,16 +4546,35 @@
                    [y (x) (>=/c x)])
                   [result (x y) (>=/c (+ x y))])
              (-Con (t:-> -Real -Real -Real))]
+       ;; no dependencies, unnamed range
        [tc-e (->i ([x string?]
                    [y exact-integer?]
                    [z boolean?])
                   [_ string?])
              (-Con (t:-> -String -Integer -Boolean -String))]
+       ;; mixed mandatory keyword + plain doms
        [tc-e (->i (#:x [x real?]
                    [z exact-integer?]
                    #:y [y (x) (>=/c x)])
                   [_ string?])
              (-Con (->key -Integer #:x -Real #t #:y -Real #t -String))]
+       ;; mixed mandatory and optional dom dependencies
+       [tc-e (->i ([x real?]
+                   [y real?])
+                  (#:w [w (x) (>=/c x)]
+                   [z (x y) (>=/c (+ x y))])
+                  [result (x y w z) (and/c exact-integer?
+                                           (>=/c (+ x y w z)))])
+             (-Con (->optkey -Real -Real (-Real) #:w -Real #f -Integer))]
+       ;; optional keyword doms + no mandatory doms; from ->i docs
+       [tc-e (->i ()
+                  (#:x [x real?]
+                   #:y [y (x) (>=/c x)])
+                  [result (x y) (>=/c (+ x y))])
+             (-Con (->optkey () #:x -Real #f #:y -Real #f -Real))]
+       [tc-e (->i ()
+                  [result real?])
+             (-Con (->opt () -Real))]
        ;; Tests for various literals that Racket treats as contracts. This
        ;; should be all of the cases covered by coerce-contract/f in guts. list?
        ;; and pair?  are special-cased in guts, yet they're handled in TR by the
