@@ -109,12 +109,38 @@
     (pattern [id:id ctc]
              #:attr (deps 1) #f)
     (pattern [id:id (deps:id ...) ctc]))
-  #;(define-splicing-syntax-class dependent-rest
-  (pattern (~seq #:rest :id+ctc)))
-  #;(define-splicing-syntax-class pre-condition
-  (pattern (~seq #:pre (id:id ...) pre-test)))
-  #;(define-splicing-syntax-class post-condition
-  (pattern (~seq #:post (id:id ...) post-test)))
+  (define dom-counter 0)
+  (define-splicing-syntax-class (dom mandatory?)
+    #:attributes (form)
+    (pattern (~seq (~optional kw:keyword) dom:id+ctc)
+             #:attr form (begin
+                           (define info
+                             (dom-info #'dom.id
+                                       (attribute dom.deps)
+                                       #'dom.ctc
+                                       (if (attribute kw)
+                                           (syntax-e (attribute kw))
+                                           (begin0 dom-counter
+                                             (set! dom-counter (add1 dom-counter))))
+                                       mandatory?))
+                           (define deps-to-splice (if (dom-info-deps info)
+                                                      (list (dom-info-deps info))
+                                                      (list)))
+                           (define kw-to-splice (if (keyword? (dom-info-type info))
+                                                    (list (dom-info-type info))
+                                                    (list)))
+                           #`(#,@kw-to-splice
+                              (dom.id
+                               #,@deps-to-splice
+                               #,(ctc:arrow-i-dom-property
+                                  ;; ->i doesn't preserve the syntax properties if we
+                                  ;; put this on the id+ctc pair; it also doesn't
+                                  ;; guarantee that the identifier for the named dom
+                                  ;; position will end up in the expanded syntax. The
+                                  ;; ctc is most likely to be in the expansion, so
+                                  ;; we'll put all the properties there
+                                  #`(begin #,@(or (attribute dom.deps) (list)) dom.ctc)
+                                  info))))))
   (define-syntax-class dependent-range
     #:attributes ((deps 1) ctc id)
     (pattern (~literal any)
@@ -125,32 +151,11 @@
 
   (syntax-parse stx
     #:literals (->i)
-    [(->i ((~seq (~optional kw:keyword) doms:id+ctc) ...)
+    [(->i ((~var mand-doms (dom #t)) ...)
           rng:dependent-range)
      (ctc:arrow-i
       (ignore
-       #`(untyped:->i (#,@(for/list ([dom (in-syntax #'(doms ...))]
-                                     [ctc (in-syntax #'(doms.ctc ...))]
-                                     [name (in-syntax #'(doms.id ...))]
-                                     [deps (in-syntax (attribute doms.deps))]
-                                     [kw (in-list (attribute kw))]
-                                     [index (in-naturals)])
-                            ;; ->i doesn't preserve the syntax properties if we
-                            ;; put this on the id+ctc pair; it also doesn't
-                            ;; guarantee that the identifier for the named dom
-                            ;; position will end up in the expanded syntax. The
-                            ;; ctc is most likely to be in the expansion, so
-                            ;; we'll put all the properties there
-                            #`(#,name
-                               #,@(or (and deps (list deps)) (list))
-                               #,(ctc:arrow-i-dom-property
-                                  #`(begin #,@(or deps (list)) #,ctc)
-                                  (dom-info name
-                                            (or deps (list))
-                                            ctc
-                                            (or (and kw (syntax-e kw))
-                                                index)
-                                            #t)))))
+       #`(untyped:->i (#,@(apply append (map syntax->list (attribute mand-doms.form))))
                       (rng.id
                        #,@(or (and (attribute rng.deps) (list (attribute rng.deps)))
                               (list))

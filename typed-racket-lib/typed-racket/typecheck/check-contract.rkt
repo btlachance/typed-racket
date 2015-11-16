@@ -129,7 +129,7 @@
   ;; (list (list id dep ...) ...)
   (define dep-map (for/list ([info (in-list dom-infos)])
                     (define id (dom-info-id info))
-                    (define deps (dom-info-deps info))
+                    (define deps (or (dom-info-deps info) (list)))
                     (cons id deps)))
   (define topo-sorted-dom-ids
     (reverse (flatten (find-strongly-connected-type-aliases dep-map))))
@@ -141,7 +141,7 @@
 
   (define dom-surface-deps-by-id
     (for/hash ([info dom-infos])
-      (values (dom-info-id info) (dom-info-deps info))))
+      (values (dom-info-id info) (or (dom-info-deps info) (list)))))
 
   (define doms-checked-env
     (for/fold ([env (lexical-env)])
@@ -155,7 +155,7 @@
            (values #'(deps ...) #'ctc)]))
       (define-values (expansion-ids tys)
         (for/lists (ids tys)
-                   ([surface-dep (in-syntax surface-deps)]
+                   ([surface-dep (in-list surface-deps)]
                     [expanded-dep (in-syntax expanded-deps)])
           (values expanded-dep (lookup env surface-dep void))))
       (define env* (extend/values env expansion-ids tys))
