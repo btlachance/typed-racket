@@ -186,14 +186,15 @@
   (with-lexical-env final-env
     (ret (-Con (make-Function
                 (list
-                 (make-arr* (for/list ([dom (in-list sorted-plain-dom-infos)])
+                 (make-arr*
+                  (for/list ([dom (in-list sorted-plain-dom-infos)])
                               (lookup-type/lexical (dom-info-id dom)))
                             (lookup-type/lexical rng-id)
                             #:rest #f
                             #:kws (for/list ([kw-dom (in-list sorted-kw-dom-infos)])
                                     (define kw (dom-info-type kw-dom))
                                     (define ty (lookup-type/lexical (dom-info-id kw-dom)))
-                                    (make-Keyword kw ty #t)))))))))
+                                    (make-Keyword kw ty (dom-info-mandatory? kw-dom))))))))))
 
 ;; trawl-for-subs : syntax -> (list syntax)
 ;; Don't call with a dont-recur? that is also is-sub?
