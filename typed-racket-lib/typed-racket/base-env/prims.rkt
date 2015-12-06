@@ -942,11 +942,14 @@ the typed racket language.
         #`(combine-out
            #,@(for/list ([id (syntax->list #'(id ...))]
                          [ctc (syntax->list #'(ctc ...))])
+
                 (syntax-local-lift-module-end-declaration
+                 ;; not an internal form because we need ctc to expand
                  (ctc:check-contract-for-property
                   #`(define-values ()
                      (begin
                        #,ctc
                        #,(ignore #`(values))))
                   id))
+                ;; ctc gets attached during provide handling
                 (user-contract-property id ctc)))]))))

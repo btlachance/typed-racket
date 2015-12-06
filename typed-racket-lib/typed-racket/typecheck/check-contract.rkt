@@ -103,26 +103,41 @@
 
 ;; tc-arrow-contract : syntax -> (Con t)
 (define (tc-arrow-contract form)
-  (define cleaned-arrow
-    (syntax-property (syntax-property form 'ctc:arrow-rng #f) 'ctc:arrow-dom #f))
+  (define arrow-subforms (or (syntax->list form) (list)))
+  (when (empty? arrow-subforms)
+    (int-err "no subforms for given -> contract form ~a" form))
   (define is-arrow? (syntax-parser [:ctc:arrow^ #t] [_ #f]))
   (define doms
-    (trawl-for-doms/rng cleaned-arrow ctc:arrow-dom-property is-arrow?))
+    (append*
+     (map
+      (λ (form) (trawl-for-doms/rng form ctc:arrow-dom-property is-arrow?))
+      arrow-subforms)))
   (define sorted-doms (sort doms < #:key ctc:arrow-dom-property))
   (define is-rng? (syntax-parser [:ctc:arrow-rng^ #t] [_ #f]))
-  (define rng (car (trawl-for-doms/rng cleaned-arrow is-rng? is-arrow?)))
+  (define rng*
+    (append* (map
+              (λ (form) (trawl-for-doms/rng form is-rng? is-arrow?))
+              arrow-subforms)))
+  (when (not (= 1 (length rng*)))
+    (int-err "got more than one rng when typechecking -> contract"))
   (ret (-Con (->* (for/list ([dom (in-list sorted-doms)])
                     (get-core-type (tc-expr/t dom)))
-                  (get-core-type (tc-expr/t rng))))))
+                  (get-core-type (tc-expr/t (first rng*)))))))
 
 ;; tc-arrow-i-contract : syntax -> (Con t)
 (define (tc-arrow-i-contract form)
-  (define cleaned-arrow-i
-    (ctc:arrow-i-dom-property (ctc:arrow-i-rng-property form #f) #f))
+  (define arrow-subforms (or (syntax->list form) (list)))
+  (when (empty? arrow-subforms)
+    (int-err "no subforms for given ->i form ~a" form))
   (define is-arrow-i? (syntax-parser [:ctc:arrow-i^ #t] [_ #f]))
-  (define expanded-ctcs (remove-duplicates (trawl-for-doms/rng cleaned-arrow-i ctc:arrow-i-dom-property is-arrow-i?)
-                                           free-identifier=?
-                                           #:key (lambda (ctc) (dom-info-id (ctc:arrow-i-dom-property ctc)))))
+  (define expanded-ctcs
+    (remove-duplicates
+     (append*
+      (map
+       (λ (form) (trawl-for-doms/rng form ctc:arrow-i-dom-property is-arrow-i?))
+       arrow-subforms))
+     free-identifier=?
+     #:key (lambda (ctc) (dom-info-id (ctc:arrow-i-dom-property ctc)))))
   (define dom-infos (map ctc:arrow-i-dom-property expanded-ctcs))
   (define dom-ids (map dom-info-id dom-infos))
 
@@ -161,8 +176,14 @@
       (define env* (extend/values env expansion-ids tys))
       (extend env* dom-id
               (with-lexical-env env* (get-core-type (tc-expr/t ctc))))))
-  (define rng-ctc*
-    (first (trawl-for-doms/rng cleaned-arrow-i ctc:arrow-i-rng-property is-arrow-i?)))
+  (define possible-rngs
+    (append*
+      (map
+       (λ (form) (trawl-for-doms/rng form ctc:arrow-i-rng-property is-arrow-i?))
+       arrow-subforms)))
+  (when (zero? (length possible-rngs))
+    (int-err "no range contract found when typechecking ->i expansion"))
+  (define rng-ctc* (first possible-rngs))
   (define-values (expanded-rng-deps rng-ctc)
     (syntax-parse rng-ctc*
       [(_ deps ... rng-ctc)

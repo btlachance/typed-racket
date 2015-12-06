@@ -146,7 +146,7 @@
     (pattern (~literal any)
              #:attr (deps 1) #f
              #:attr ctc #'any
-             #:attr id #'_)
+            #:attr id #'_)
     (pattern :id+ctc))
 
   (syntax-parse stx
@@ -170,5 +170,7 @@
                                     (or (attribute rng.deps)
                                         (list))
                                     #'rng.ctc
+                                    ;; multi-value ranges will need to use this
+                                    ;; field
                                     0))))))]))
 
