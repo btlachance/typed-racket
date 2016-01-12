@@ -199,5 +199,5 @@
 
 [Continuation-Mark-Keyof (-poly (a) (make-Continuation-Mark-Keyof a))]
 [Prompt-Tagof (-poly (a b) (make-Prompt-Tagof a b))]
-[Con (-poly (a) (make-Con a))]
-[FlatCon (-poly (a) (make-FlatCon a))]
+[Con (-poly (a b) (make-Con a b))]
+[FlatCon (-poly (a b) (make-FlatCon a b))]

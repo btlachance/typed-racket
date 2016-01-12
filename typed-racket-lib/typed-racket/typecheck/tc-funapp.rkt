@@ -304,7 +304,7 @@
       [(Distinction: _ _ t)
        (tc/funapp f-stx args-stx t args-res expected)]
       [(FlatCon: t)
-       (define t->bool (-> t -Boolean))
+       (define t->bool (-> t-pre -Boolean : (-FS (-filter t-post 0) -top)))
        (tc/funapp f-stx args-stx t->bool args-res expected)]
       ;; resolve names, polymorphic apps, mu, etc
       [(? resolvable?)

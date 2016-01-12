@@ -5,7 +5,7 @@ blaming:.*untyped")
 (module ctc-ho-pro typed/racket
   (provide (contract-out
             [foo (->/c (>/c 5) (>/c 5))]))
-  (: foo (-> Integer Integer))
+  (: foo (-> Real Real))
   (define (foo x) x))
 (require 'ctc-ho-pro)
 (module untyped racket

@@ -1175,8 +1175,8 @@
        (make-Distinction nm id ty))])
 
 ;; Contract type
-(def-type Con ([ty Type/c]))
-(def-type FlatCon ([ty Type/c]))
+(def-type Con ([in-ty Type/c] [out-ty Type/c]))
+(def-type FlatCon ([in-ty Type/c] [out-ty Type/c]))
 
 
 ;;************************************************************

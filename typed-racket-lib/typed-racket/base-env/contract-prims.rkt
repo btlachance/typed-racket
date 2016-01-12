@@ -26,22 +26,22 @@
             (assume-type-property #'untyped-ctc ty))) ...)]))
 
 (define-contract
-  [flat-named-contract (-poly (a) (-> Univ (-FlatCon a) (-FlatCon a)))]
-  [any/c (-FlatCon Univ)]
-  [none/c (-FlatCon Univ)]
-  [not/c (-poly (a) (-> (-FlatCon a) (-FlatCon Univ)))]
-  [=/c (-> -Real (-FlatCon -Real))]
-  [</c (-> -Real (-FlatCon -Real))]
-  [>/c (-> -Real (-FlatCon -Real))]
-  [<=/c (-> -Real (-FlatCon -Real))]
-  [>=/c (-> -Real (-FlatCon -Real))]
-  [between/c (-> -Real -Real (-FlatCon -Real))]
-  [real-in (-> -Real -Real (-FlatCon -Real))]
-  [integer-in (-> -Integer -Integer (-FlatCon -Integer))]
-  [natural-number/c (-FlatCon -Nat)]
-  [string-len/c (-> -Real (-FlatCon -String))]
-  [false/c (-FlatCon -False)]
-  [printable/c (-FlatCon Univ)]
+  [flat-named-contract (-poly (a b) (-> Univ (-FlatCon a b) (-FlatCon a b)))]
+  [any/c (-FlatCon Univ Univ)]
+  [none/c (-FlatCon Univ Univ)]
+  [not/c (-poly (a b) (-> (-FlatCon a b) (-FlatCon a a)))]
+  [=/c (-> -Real (-FlatCon Univ -Real))]
+  [</c (-> -Real (-FlatCon Univ -Real))]
+  [>/c (-> -Real (-FlatCon Univ -Real))]
+  [<=/c (-> -Real (-FlatCon Univ -Real))]
+  [>=/c (-> -Real (-FlatCon Univ -Real))]
+  [between/c (-> -Real -Real (-FlatCon Univ -Real))]
+  [real-in (-> -Real -Real (-FlatCon Univ -Real))]
+  [integer-in (-> -Integer -Integer (-FlatCon Univ -Integer))]
+  [natural-number/c (-FlatCon Univ -Nat)]
+  [string-len/c (-> -Real (-FlatCon Univ -String))]
+  [false/c (-FlatCon Univ -False)]
+  [printable/c (-FlatCon Univ Univ)]
   ;; one-of/c
   ;; vectorof
   ;; vector-immutableof (tricky, TR doesn't have immutable vectors)
@@ -49,13 +49,14 @@
   ;; vector-immutable/c
   ;; box/c
   ;; box-immutable/c
-  [listof (-poly (a) (-> (-Con a) (-Con (-lst a))))]
-  [non-empty-listof (-poly (a) (-> (-Con a) (-Con (-lst a))))]
-  [list*of (-poly (a) (-> (-Con a) (-Con (-mu x (-pair a (Un a x))))))]
-  [cons/c (-poly (a b) (-> (-Con a) (-Con b) (-Con (-pair a b))))]
+  [listof (-poly (a b) (-> (-Con a b) (-Con (-lst a) (-lst b))))]
+  [non-empty-listof (-poly (a b) (-> (-Con a b) (-Con (-lst a) (-lst b))))]
+  [list*of (-poly (a b) (-> (-Con a b) (-Con (-mu x (-pair a (Un a x)))
+                                             (-mu x (-pair b (Un b x))))))]
+  [cons/c (-poly (a b c d) (-> (-Con a b) (-Con c d) (-Con (-pair b c)
+                                                           (-pair a d))))]
   ;; cons/dc
-  [list/c (-polydots (a) (->... (list) ((-Con a) a) (-Con (make-ListDots a 'a))))]
-  [syntax/c (-poly (a) (-> (-FlatCon a) (-FlatCon (-Syntax a))))]
+  [syntax/c (-poly (a b) (-> (-FlatCon a b) (-FlatCon (-Syntax a) (-Syntax b))))]
   ;; struct/c
   ;; struct/dc
   ;; parameter/c
@@ -72,7 +73,7 @@
   ;; promise/c
   ;; flat-contract
   ;; flat-contract-predicate
-  [symbols (->* (list) -Symbol (-Con -Symbol))])
+  [symbols (->* (list) -Symbol (-Con Univ -Symbol))])
 
 ;; and/c requires us to calculate an intersection, so we can't give it a type
 ;; like the make-variable-... usages above
@@ -94,14 +95,23 @@
                                     [idx (in-naturals)])
                            (ctc:or/c-sub-property ctc idx))))]))
 
+(define-syntax (list/c stx)
+  (syntax-parse stx
+    #:literals (list/c)
+    [(list/c ctc:expr ...)
+     (ctc:list/c
+      #`(untyped:list/c #,@(for/list ([ctc (in-syntax #'(ctc ...))]
+                                      [idx (in-naturals)])
+                             (ctc:list/c-sub-property ctc idx))))]))
+
 (define-syntax (->/c stx)
   (syntax-parse stx
     #:literals (->/c)
     [(->/c doms:expr ... rng:expr)
-     (ctc:arrow #`(untyped:-> #,@(for/list ([dom (in-syntax #'(doms ...))]
-                                            [idx (in-naturals)])
-                                   (ctc:arrow-dom-property dom idx))
-                              #,(ctc:arrow-rng #'rng)))]))
+     (ctc:arrow (ignore #`(untyped:-> #,@(for/list ([dom (in-syntax #'(doms ...))]
+                                                    [idx (in-naturals)])
+                                           (ctc:arrow-dom-property dom idx))
+                                      #,(ctc:arrow-rng #'rng))))]))
 
 (define-syntax (->i stx)
   (define-syntax-class id+ctc

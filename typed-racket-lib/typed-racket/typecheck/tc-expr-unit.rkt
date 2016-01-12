@@ -150,6 +150,8 @@
        (tc-and/c form)]
       [:ctc:or/c^
        (tc-or/c form)]
+      [:ctc:list/c^
+       (tc-list/c form)]
       ;; a TR-annotated class
       [stx:tr:class^
        (check-class form expected)]

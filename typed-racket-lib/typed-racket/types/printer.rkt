@@ -711,8 +711,8 @@
               [(null? pre-deps) `(#:pre ,(prop->sexp pre))]
               [else `(#:pre ,pre-deps ,(prop->sexp pre))])
           ,(values->sexp rng))]
-    [(Con: t) `(Con ,(t->s t))]
-    [(FlatCon: t) `(FlatCon ,(t->s t))]
+    [(Con: t-pre t-post) `(Con ,(t->s t-pre) ,(t->s t-post))]
+    [(FlatCon: t-pre t-post) `(FlatCon ,(t->s t-pre) ,(t->s t-post))]
     [else `(Unknown Type: ,(struct->vector type))]))
 
 

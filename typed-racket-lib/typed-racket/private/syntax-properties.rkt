@@ -100,5 +100,8 @@
   (ctc:and/c ctc:and/c #:mark)
   (ctc:and/c-sub ctc:and/c-sub)
   (ctc:or/c ctc:or/c #:mark)
-  (ctc:or/c-sub ctc:or/c-sub)) ;; contains the position in the and/c
+  (ctc:or/c-sub ctc:or/c-sub)
+  (ctc:list/c ctc:list/c #:mark)
+  ;; contains the index of the sub-contract in its containing contract
+  (ctc:list/c-sub ctc:list/c-sub))
 

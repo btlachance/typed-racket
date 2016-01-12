@@ -4,7 +4,7 @@
 (module server typed/racket
   (provide
    (contract-out
-    [enhance ((or/c (not/c (string-len/c 1))
+    [enhance ((or/c (and/c string? (not/c (string-len/c 1)))
                     exact-integer?)
               . ->/c .
               any/c)]))

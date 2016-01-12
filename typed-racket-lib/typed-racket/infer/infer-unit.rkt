@@ -588,15 +588,18 @@
         [((Distinction: _ _ S) T)
          (cg S T obj)]
 
-        [((Con: S) (Con: T))
-         (cg S T)]
-        [((FlatCon: S) (FlatCon: T))
-         (cg S T)]
-        [((FlatCon: S) (Con: T))
-         (cg S T)]
+        ;; XXX: When these were ordered like the Param case, this didn't work
+        ;; right: (Un)'s woulld show up in negative positions.
+        [((Con: S-pre S-post) (Con: T-pre T-post))
+         (% cset-meet (cg S-pre T-pre) (cg S-post T-post))]
+        [((FlatCon: S-pre S-post) (FlatCon: T-pre T-post))
+         (% cset-meet (cg S-pre T-pre) (cg S-post T-post))]
+        [((FlatCon: S-pre S-post) (Con: T-pre T-post))
+         (% cset-meet (cg S-pre T-pre) (cg S-post T-post))]
         [((PredicateFilter: (FilterSet: (TypeFilter: S _) _))
-          (FlatCon: T))
-         (cg S T)]
+          (FlatCon: T-pre T-post))
+         ;; XXX: Need to get my head around this case
+         (% cset-meet (cg Univ T-pre) (cg S T-post))]
 
         ;; two structs with the same name
         ;; just check pairwise on the fields

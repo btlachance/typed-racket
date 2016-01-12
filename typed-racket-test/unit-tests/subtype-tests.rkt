@@ -719,14 +719,18 @@
    [FAIL (-refine/fresh x -Int (-eq (-lexp x) (-lexp 256))) -Byte]
    [FAIL (-refine/fresh x -Int (-leq (-lexp x) (-lexp -1))) -Nat]
 
-   [(-FlatCon -Real) (-Con -Real)]
+   [(-FlatCon -Real -Real) (-Con -Real -Real)]
    [(-> Univ -Boolean : (-FS (-filter -Integer 0) -top))
-    (-FlatCon -Integer)]
+    (-FlatCon Univ -Integer)]
+   [(-> -Real -Boolean)
+    (-FlatCon -Real -Real)]
+   [(-> -Real -Boolean : (-FS (-filter -PosReal 0) -top))
+    (-FlatCon -Real -PosReal)]
    [FAIL
     (-> Univ -Boolean : (-FS (-filter -Real 0) -top))
-    (-FlatCon -Integer)]
+    (-FlatCon Univ -Integer)]
    [(-> Univ -Boolean : (-FS (-filter -Integer 0) -top))
-    (-FlatCon -Real)]
+    (-FlatCon Univ -Real)]
    ))
 
 
