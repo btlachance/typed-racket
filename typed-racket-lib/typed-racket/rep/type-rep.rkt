@@ -1175,8 +1175,10 @@
        (make-Distinction nm id ty))])
 
 ;; Contract type
-(def-type Con ([in-ty Type/c] [out-ty Type/c]))
-(def-type FlatCon ([in-ty Type/c] [out-ty Type/c]))
+(def-type Con ([in-ty Type/c] [out-ty Type/c])
+  [#:frees (λ (f) (combine-frees (list (flip-variances (f in-ty)) (f out-ty))))])
+(def-type FlatCon ([in-ty Type/c] [out-ty Type/c])
+  [#:frees (λ (f) (combine-frees (list (flip-variances (f in-ty)) (f out-ty))))])
 
 
 ;;************************************************************
