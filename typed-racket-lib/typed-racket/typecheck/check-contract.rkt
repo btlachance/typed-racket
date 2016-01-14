@@ -320,7 +320,7 @@
 ;; check-contract : identifier syntax -> [void]
 (define (check-contract defn-id ctc)
   (match-define (Con*: in-ty _) (coerce-to-con (tc-expr/t ctc)))
-  (unless (subtype in-ty (lookup-type defn-id))
+  (unless (subtype (lookup-type defn-id) in-ty)
     (tc-error/fields "contract is incompatible with type"
                      #:delayed? #t
                      "type" (lookup-type defn-id)
