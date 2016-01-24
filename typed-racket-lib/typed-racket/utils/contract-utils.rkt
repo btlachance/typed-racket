@@ -15,6 +15,7 @@
  ConFn*:)
 
 ;; dom-info is a (dom-info Option<Syntax> Option<Deps> Syntax ArgType Boolean)
+;; Note: its components contain unexpanded/surface syntax.
 ;; -- `id' the syntax of the id the user wrote or false if this domain is unnamed
 ;; -- `deps' is either a possibly empty Listof<Syntax> for the list of
 ;;    identifiers this domain depends on or false if there are none (which is
@@ -29,6 +30,7 @@
 (struct dom-info (id deps ctc type mandatory?) #:transparent)
 
 ;; pre/post-info is a (pre/post-info Option<Syntax> Option<Deps> Syntax Natural)
+;; Note: its components contain unexpanded/surface syntax.
 ;; -- `id' is the syntax of the id for a named pre/post condition, #f if unnamed
 ;; -- `deps' is either a possible empty Listof<Syntax> for the list of
 ;;    identifiers this condition depends on or false if there are none
@@ -40,6 +42,7 @@
 (struct pre/post-info (id deps condition position) #:transparent)
 
 ;; rng-info is a (rng-info Option<Syntax> Option<Deps> Syntax Natural)
+;; Note: its components contain unexpanded/surface syntax.
 ;; -- `id' the syntax of the id the user wrote or false if this range is unnamed
 ;; -- `deps' is either a possibly empty Listof<Syntax> for the list of
 ;;    identifiers this range depends on or false if there are none (which is

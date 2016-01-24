@@ -21,30 +21,6 @@
 (import tc-expr^)
 (export check-contract^)
 
-;; TODO: Use this for check-contract, too. Something like:
-;; (-Con (get-core-type t))
-(define (get-core-type ty)
-  (define coercible-simple-value-types
-    (Un -Null -Symbol -Boolean -Keyword -Char -Bytes -String -Number))
-  (match ty
-    [(PredicateFilter: (FilterSet: (TypeFilter: t _) fs-))
-     #:when (subtype ty (-> Univ Univ))
-     t]
-    [(Con*: t _) t]
-    ;; TODO: These should all be interpreted as FlatCon, but we have no control
-    ;; over that via get-core-type. Need to restructure the code to accomodate
-    ;; that.
-    [_
-     #:when (subtype ty coercible-simple-value-types)
-     ty]
-    ;; Because the type of these isn't the core type needed for the contract,
-    ;; they need to be handled differently than coercible-simple-value-types
-    [(== -Regexp) -String]
-    [(== -Byte-Regexp) -Bytes]
-    ;; See explanation in filter->contract
-    ;[(Function: (list (arr: t (== -Boolean) _ _ _))) t]
-    [_ (Un)]))
-
 ;; trawl-for-doms/rng : syntax predicate predicate -> (listof syntax)
 ;; Finds syntax/subforms for which is-dom/rng? returns a non-#f value. Does not
 ;; recur into arrow subforms, according to is-arrow? since those must still be
@@ -154,7 +130,8 @@
         (for/lists (ids tys)
                    ([surface-dep (in-list surface-deps)]
                     [expanded-dep (in-syntax expanded-deps)])
-          (values expanded-dep (lookup env surface-dep void))))
+          (values expanded-dep
+                  (lookup env surface-dep void))))
       (define env* (extend/values env expansion-ids tys))
       (define ctc-ty (with-lexical-env env* (coerce-to-con (tc-expr/t ctc))))
       (values
@@ -162,9 +139,9 @@
        (hash-set ctc-tys dom-id ctc-ty))))
   (define possible-rngs
     (append*
-      (map
-       (λ (form) (trawl-for-doms/rng form ctc:arrow-i-rng-property is-arrow-i?))
-       arrow-subforms)))
+     (map
+      (λ (form) (trawl-for-doms/rng form ctc:arrow-i-rng-property is-arrow-i?))
+      arrow-subforms)))
   (when (zero? (length possible-rngs))
     (int-err "no range contract found when typechecking ->i expansion"))
   (define rng-ctc* (first possible-rngs))
@@ -174,11 +151,11 @@
        (values #'(deps ...) #'rng-ctc)]))
   (define rng-info (ctc:arrow-i-rng-property rng-ctc*))
   (define surface-rng-deps (rng-info-deps rng-info))
-  (define-values (rng-ids rng-tys) (for/lists (ids tys)
+  (define-values (rng-deps-ids rng-deps-tys) (for/lists (ids tys)
                                               ([surface-rng-dep (in-syntax surface-rng-deps)]
                                                [expanded-rng-dep (in-syntax expanded-rng-deps)])
                                      (values expanded-rng-dep (lookup doms-checked-env surface-rng-dep void))))
-  (define final-env* (extend/values doms-checked-env rng-ids rng-tys))
+  (define final-env* (extend/values doms-checked-env rng-deps-ids rng-deps-tys))
   (define rng-id (rng-info-id rng-info))
   (define rng-ctc-ty (with-lexical-env final-env* (coerce-to-con (tc-expr/t rng-ctc))))
   ;; assuming the result passes the range check, its dependents can use it at
@@ -192,28 +169,27 @@
   (define sorted-mandatory-plain-dom-infos (sort mandatory-plain-dom-infos < #:key dom-info-type))
   (define sorted-optional-plain-dom-infos (sort optional-plain-dom-infos < #:key dom-info-type))
   (define sorted-kw-dom-infos (sort kw-dom-infos keyword<? #:key dom-info-type))
-  (with-lexical-env final-env
-    (define opt-count (length optional-plain-dom-infos))
-    (define-values (in-arrs out-arrs)
-      (for/lists (ins outs)
-                 ([vararg-slice-length (in-range (add1 opt-count))])
-        (define opts (take sorted-optional-plain-dom-infos vararg-slice-length))
-        (define doms (append sorted-mandatory-plain-dom-infos opts))
-        (define (dom-ty d) (hash-ref dom-ctc-tys-by-id (dom-info-id d)))
-        (define (kw Con*in/out-ty kw-info)
-          (define kw (dom-info-type kw-info))
-          (define ty (hash-ref dom-ctc-tys-by-id (dom-info-id kw-info)))
-          (make-Keyword kw (Con*in/out-ty ty) (dom-info-mandatory? kw-info)))
-        (values
-         (make-arr* (map (compose Con*-out-ty dom-ty) doms)
-                    (Con*-in-ty rng-ctc-ty)
-                    #:rest #f
-                    #:kws (map (curry kw Con*-out-ty) sorted-kw-dom-infos))
-         (make-arr* (map (compose Con*-in-ty dom-ty) doms)
-                    (Con*-out-ty rng-ctc-ty)
-                    #:rest #f
-                    #:kws (map (curry kw Con*-in-ty) sorted-kw-dom-infos)))))
-    (ret (-Con (make-Function in-arrs) (make-Function out-arrs)))))
+  (define opt-count (length optional-plain-dom-infos))
+  (define-values (in-arrs out-arrs)
+    (for/lists (ins outs)
+               ([vararg-slice-length (in-range (add1 opt-count))])
+      (define opts (take sorted-optional-plain-dom-infos vararg-slice-length))
+      (define doms (append sorted-mandatory-plain-dom-infos opts))
+      (define (dom-ty d) (hash-ref dom-ctc-tys-by-id (dom-info-id d)))
+      (define (kw Con*in/out-ty kw-info)
+        (define kw (dom-info-type kw-info))
+        (define ty (hash-ref dom-ctc-tys-by-id (dom-info-id kw-info)))
+        (make-Keyword kw (Con*in/out-ty ty) (dom-info-mandatory? kw-info)))
+      (values
+       (make-arr* (map (compose Con*-out-ty dom-ty) doms)
+                  (Con*-in-ty rng-ctc-ty)
+                  #:rest #f
+                  #:kws (map (curry kw Con*-out-ty) sorted-kw-dom-infos))
+       (make-arr* (map (compose Con*-in-ty dom-ty) doms)
+                  (Con*-out-ty rng-ctc-ty)
+                  #:rest #f
+                  #:kws (map (curry kw Con*-in-ty) sorted-kw-dom-infos)))))
+  (ret (-Con (make-Function in-arrs) (make-Function out-arrs))))
 
 ;; trawl-for-subs : syntax -> (list syntax)
 ;; Don't call with a dont-recur? that is also is-sub?
