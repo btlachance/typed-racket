@@ -55,6 +55,7 @@
 ;; tc-arrow-contract : syntax -> (Con t)
 (define (tc-arrow-contract form)
   (define arrow-subforms (or (syntax->list form) (list)))
+
   (when (empty? arrow-subforms)
     (int-err "no subforms for given -> contract form ~a" form))
   (define is-arrow? (syntax-parser [:ctc:arrow^ #t] [_ #f]))
@@ -82,13 +83,57 @@
   (ret (-Con (->* out-doms (Con*-in-ty rng-ty))
              (->* in-doms (Con*-out-ty rng-ty)))))
 
+
 ;; tc-arrow-i-contract : syntax -> (Con t)
+
+;; v2 pseudocode/notes
+
+;; main data structure: list of expanded ctc forms first
+
+;; 1) topo-sort this list via a helper function, and then the type rule will
+;; just operate on that sorted list
+
+;; Note: we'll still have to handle the surface/expanded dep list association, but
+;; that will be common code b/w the doms and multi-value range checking
+
+;; 2) When checking the current contract (call it "sub"), we must extend the
+;; environment with a mapping from each of sub's dependencies' expanded
+;; identifiers to their output types -- this is the identifier that is in the
+;; body of the expanded contract (not the surface identifier). That mapping
+;; couldn't have happened prior to checking sub because no dependency knows its
+;; own expanded identifier (due to how ->i expands, we place the dependencies'
+;; identifiers in the body of the contract for later recovery post-expansion;
+;; without that trick, maybe a walk over the entire expanded syntax from ->i
+;; could recover this; maybe there's even other macro-trickery to simplify this
+;; further). Thus, after checking any contract, we pass along its full type by
+;; mapping its surface identifier to that type. This works because all contracts
+;; know their own surface identifier and all contracts know the surface
+;; identifiers of their dependencies.
+
+;; topo-sort-ctcs : (Listof Stx) (Stx -> Id) (Stx -> Listof Id) -> Listof Stx
+;; Returns a permutation of ctcs in topo-order, according to their dependencies
+(define (topo-sort-ctcs ctcs ctc->id ctc->deps)
+  (define dep-map (for/list ([ctc ctcs])
+                    ;; TODO: what if the id was #f, maybe gensym an id here?
+                    (define surface-id (ctc->id ctc))
+                    (define deps (or (ctc->deps ctc) (list)))
+                    (cons surface-id deps)))
+  ;; TODO: could find-strongly-connected-type-aliases ever not return something
+  ;; we want to just outright flatten? e.g. could we even get to this point if
+  ;; there was a cycle (or would ->i have already errored)?
+  (define sorted-ids* (flatten (find-strongly-connected-type-aliases dep-map)))
+  (define topo-sorted-ids (reverse sorted-ids*))
+
+  (define ((ctc-matcher-for-id id) ctc) (free-identifier=? id (ctc->id ctc)))
+  (for/list ([id topo-sorted-ids])
+    (findf (ctc-matcher-for-id id) ctcs)))
+
 (define (tc-arrow-i-contract form)
   (define arrow-subforms (or (syntax->list form) (list)))
   (when (empty? arrow-subforms)
     (int-err "no subforms for given ->i form ~a" form))
   (define is-arrow-i? (syntax-parser [:ctc:arrow-i^ #t] [_ #f]))
-  (define expanded-ctcs
+  (define expanded-doms
     (remove-duplicates
      (append*
       (map
@@ -96,47 +141,34 @@
        arrow-subforms))
      free-identifier=?
      #:key (lambda (ctc) (dom-info-id (ctc:arrow-i-dom-property ctc)))))
-  (define dom-infos (map ctc:arrow-i-dom-property expanded-ctcs))
 
-  ;; (list (list id dep ...) ...)
-  (define dep-map (for/list ([info (in-list dom-infos)])
-                    (define id (dom-info-id info))
-                    (define deps (or (dom-info-deps info) (list)))
-                    (cons id deps)))
-  (define topo-sorted-dom-ids
-    (reverse (flatten (find-strongly-connected-type-aliases dep-map))))
+  (define dom-ctc->id (compose dom-info-id ctc:arrow-i-dom-property))
+  (define dom-ctc->deps (compose dom-info-deps ctc:arrow-i-dom-property))
+  (define topo-sorted-dom-ctcs
+    (topo-sort-ctcs expanded-doms dom-ctc->id dom-ctc->deps))
 
-  (define dom-expanded-ctcs-by-id
-    (for/hash ([ctc expanded-ctcs])
-      (define info (ctc:arrow-i-dom-property ctc))
-      (values (dom-info-id info) ctc)))
+  ;; check-subcontract : Stx (Stx -> Listof Stx) Env -> Type/c
+  ;; Calculates the type of ctc. All its dependencies must have their surface
+  ;; id mapped to their contract type in env.
+  (define (check-subcontract ctc ctc->deps env)
+    (define surface-deps (or (ctc->deps ctc) (list)))
+    (define-values (expanded-deps expanded-ctc)
+      (syntax-parse ctc
+        [(_ deps ... ctc)
+         (values #'(deps ...) #'ctc)]))
+    (define deps-env
+      (for/fold ([env env])
+                ([surface-id surface-deps]
+                 [expanded-id (in-syntax expanded-deps)])
+        (extend env expanded-id (Con*-out-ty (lookup env surface-id void)))))
+    (with-lexical-env deps-env
+      (coerce-to-con (tc-expr/t expanded-ctc))))
 
-  (define dom-surface-deps-by-id
-    (for/hash ([info dom-infos])
-      (values (dom-info-id info) (or (dom-info-deps info) (list)))))
-
-  (define-values (doms-checked-env dom-ctc-tys-by-id)
-    (for/fold ([env (lexical-env)]
-               [ctc-tys (hash)])
-              ([dom-id (in-list topo-sorted-dom-ids)])
-      (define surface-deps (hash-ref dom-surface-deps-by-id dom-id))
-      (define ctc* (hash-ref dom-expanded-ctcs-by-id dom-id))
-      (define-values (expanded-deps ctc)
-        (syntax-parse ctc*
-          ;; ctc is transformed to (begin deps ... ctc) by ->i in contract-prims
-          [(_ deps ... ctc)
-           (values #'(deps ...) #'ctc)]))
-      (define-values (expansion-ids tys)
-        (for/lists (ids tys)
-                   ([surface-dep (in-list surface-deps)]
-                    [expanded-dep (in-syntax expanded-deps)])
-          (values expanded-dep
-                  (lookup env surface-dep void))))
-      (define env* (extend/values env expansion-ids tys))
-      (define ctc-ty (with-lexical-env env* (coerce-to-con (tc-expr/t ctc))))
-      (values
-       (extend env* dom-id (Con*-out-ty ctc-ty))
-       (hash-set ctc-tys dom-id ctc-ty))))
+  (define doms-checked-env
+    (for/fold ([env (lexical-env)])
+              ([ctc topo-sorted-dom-ctcs])
+      (define ctc-ty (check-subcontract ctc dom-ctc->deps env))
+      (extend env (dom-ctc->id ctc) ctc-ty)))
   (define possible-rngs
     (append*
      (map
@@ -144,51 +176,37 @@
       arrow-subforms)))
   (when (zero? (length possible-rngs))
     (int-err "no range contract found when typechecking ->i expansion"))
-  (define rng-ctc* (first possible-rngs))
-  (define-values (expanded-rng-deps rng-ctc)
-    (syntax-parse rng-ctc*
-      [(_ deps ... rng-ctc)
-       (values #'(deps ...) #'rng-ctc)]))
-  (define rng-info (ctc:arrow-i-rng-property rng-ctc*))
-  (define surface-rng-deps (rng-info-deps rng-info))
-  (define-values (rng-deps-ids rng-deps-tys) (for/lists (ids tys)
-                                              ([surface-rng-dep (in-syntax surface-rng-deps)]
-                                               [expanded-rng-dep (in-syntax expanded-rng-deps)])
-                                     (values expanded-rng-dep (lookup doms-checked-env surface-rng-dep void))))
-  (define final-env* (extend/values doms-checked-env rng-deps-ids rng-deps-tys))
-  (define rng-id (rng-info-id rng-info))
-  (define rng-ctc-ty (with-lexical-env final-env* (coerce-to-con (tc-expr/t rng-ctc))))
-  ;; assuming the result passes the range check, its dependents can use it at
-  ;; the contract's out type
-  (define final-env (extend final-env* rng-id (Con*-out-ty rng-ctc-ty)))
+  (define rng-ctc (first possible-rngs))
+  (define rng-ctc->deps (compose rng-info-deps ctc:arrow-i-rng-property))
+  (define rng-ctc-ty (check-subcontract rng-ctc rng-ctc->deps doms-checked-env))
 
-  (define-values (kw-dom-infos plain-dom-infos)
-    (partition (lambda (info) (keyword? (dom-info-type info))) dom-infos))
-  (define-values (mandatory-plain-dom-infos optional-plain-dom-infos)
-    (partition dom-info-mandatory? plain-dom-infos))
-  (define sorted-mandatory-plain-dom-infos (sort mandatory-plain-dom-infos < #:key dom-info-type))
-  (define sorted-optional-plain-dom-infos (sort optional-plain-dom-infos < #:key dom-info-type))
-  (define sorted-kw-dom-infos (sort kw-dom-infos keyword<? #:key dom-info-type))
-  (define opt-count (length optional-plain-dom-infos))
+  (define dom-infos (map ctc:arrow-i-dom-property expanded-doms))
+  (define-values (kw-doms plain-doms)
+    (partition (compose keyword? dom-info-type) dom-infos))
+  (define-values (reqd-plain-doms opt-plain-doms)
+    (partition dom-info-mandatory? (sort plain-doms < #:key dom-info-type)))
+  (define sorted-kw-doms (sort kw-doms keyword<? #:key dom-info-type))
+  (define opt-count (length opt-plain-doms))
   (define-values (in-arrs out-arrs)
     (for/lists (ins outs)
                ([vararg-slice-length (in-range (add1 opt-count))])
-      (define opts (take sorted-optional-plain-dom-infos vararg-slice-length))
-      (define doms (append sorted-mandatory-plain-dom-infos opts))
-      (define (dom-ty d) (hash-ref dom-ctc-tys-by-id (dom-info-id d)))
-      (define (kw Con*in/out-ty kw-info)
+      (define opts (take opt-plain-doms vararg-slice-length))
+      (define doms (append reqd-plain-doms opts))
+      ;; TODO: dom-ty should be able to look up the type in doms-checked-env
+      (define (dom-ty d) (lookup doms-checked-env (dom-info-id d) void))
+      (define ((kw-in/out Con*in/out-ty) kw-info)
         (define kw (dom-info-type kw-info))
-        (define ty (hash-ref dom-ctc-tys-by-id (dom-info-id kw-info)))
+        (define ty (lookup doms-checked-env (dom-info-id kw-info) void))
         (make-Keyword kw (Con*in/out-ty ty) (dom-info-mandatory? kw-info)))
       (values
        (make-arr* (map (compose Con*-out-ty dom-ty) doms)
                   (Con*-in-ty rng-ctc-ty)
                   #:rest #f
-                  #:kws (map (curry kw Con*-out-ty) sorted-kw-dom-infos))
+                  #:kws (map (kw-in/out Con*-out-ty) sorted-kw-doms))
        (make-arr* (map (compose Con*-in-ty dom-ty) doms)
                   (Con*-out-ty rng-ctc-ty)
                   #:rest #f
-                  #:kws (map (curry kw Con*-in-ty) sorted-kw-dom-infos)))))
+                  #:kws (map (kw-in/out Con*-in-ty) sorted-kw-doms)))))
   (ret (-Con (make-Function in-arrs) (make-Function out-arrs))))
 
 ;; trawl-for-subs : syntax -> (list syntax)
