@@ -120,6 +120,9 @@
              #:attr (deps 1) #f)
     (pattern [id:id (deps:id ...) ctc]))
   (define dom-counter 0)
+  (define (next-dom-index)
+    (begin0 dom-counter
+      (set! dom-counter (add1 dom-counter))))
   (define-splicing-syntax-class (dom mandatory?)
     #:attributes (form)
     (pattern (~seq (~optional kw:keyword) dom:id+ctc)
@@ -130,8 +133,7 @@
                                        #'dom.ctc
                                        (if (attribute kw)
                                            (syntax-e (attribute kw))
-                                           (begin0 dom-counter
-                                             (set! dom-counter (add1 dom-counter))))
+                                           (next-dom-index))
                                        mandatory?))
                            (define deps-to-splice (if (dom-info-deps info)
                                                       (list (dom-info-deps info))
