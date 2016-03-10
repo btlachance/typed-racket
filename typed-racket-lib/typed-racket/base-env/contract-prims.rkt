@@ -160,11 +160,15 @@
              #:attr ctc #'any
             #:attr id #'_)
     (pattern :id+ctc))
+  (define-splicing-syntax-class dependent-rest
+    #:attributes ((deps 1) ctc id)
+    (pattern (~seq #:rest :id+ctc)))
 
   (syntax-parse stx
     #:literals (->i)
     [(->i ((~var mand-doms (dom #t)) ...)
           (~optional ((~var opt-doms (dom #f)) ...))
+          (~optional rest:dependent-rest)
           rng:dependent-range)
      (ctc:arrow-i
       (ignore
@@ -172,6 +176,18 @@
                                                               (list)))))
                       (#,@(apply append (map syntax->list (or (attribute opt-doms.form)
                                                               (list)))))
+                      #,@(if (attribute rest)
+                             (list #'#:rest #`[rest.id
+                                               #,@(or (and (attribute rest.deps) (list (attribute rest.deps)))
+                                                      (list))
+                                               #,(ctc:arrow-i-rest-property
+                                                  #`(begin #,@(or (attribute rest.deps) (list))
+                                                           rest.ctc)
+                                                  (rest-info #'rest.id
+                                                             (or (attribute rest.deps)
+                                                                 (list))
+                                                             #'rest.ctc))])
+                             (list))
                       (rng.id
                        #,@(or (and (attribute rng.deps) (list (attribute rng.deps)))
                               (list))

@@ -141,11 +141,29 @@
        arrow-subforms))
      free-identifier=?
      #:key (lambda (ctc) (dom-info-id (ctc:arrow-i-dom-property ctc)))))
+  (define rest-ctc/#f
+    (ormap
+     (λ (x) x)
+     (trawl-for-doms/rng form ctc:arrow-i-rest-property is-arrow-i?)))
 
   (define dom-ctc->id (compose dom-info-id ctc:arrow-i-dom-property))
   (define dom-ctc->deps (compose dom-info-deps ctc:arrow-i-dom-property))
+  (define (rest-ctc->dom-ctc rest-ctc)
+    (define rest (ctc:arrow-i-rest-property rest-ctc))
+    (ctc:arrow-i-dom-property
+     rest-ctc
+     (dom-info
+      (rest-info-id rest)
+      (rest-info-deps rest)
+      (rest-info-ctc rest)
+      +inf.0
+      #t)))
   (define topo-sorted-dom-ctcs
-    (topo-sort-ctcs expanded-doms dom-ctc->id dom-ctc->deps))
+    (topo-sort-ctcs (if rest-ctc/#f
+                        (cons (rest-ctc->dom-ctc rest-ctc/#f) expanded-doms)
+                        expanded-doms)
+                    dom-ctc->id
+                    dom-ctc->deps))
 
   ;; check-subcontract : Stx (Stx -> Listof Stx) Env -> Type/c
   ;; Calculates the type of ctc. All its dependencies must have their surface
@@ -168,7 +186,37 @@
     (for/fold ([env (lexical-env)])
               ([ctc topo-sorted-dom-ctcs])
       (define ctc-ty (check-subcontract ctc dom-ctc->deps env))
+      ;; TODO: what if dom-ctc->id contains #f (dom-info-id can be #f)
       (extend env (dom-ctc->id ctc) ctc-ty)))
+
+  ;; We check the type of the #:rest contract after building up the checked-env
+  ;; because it would be complicated to check that it's a list contract in the
+  ;; middle of checking the rest of the contracts.
+  (define rest-ctc-ty/#f
+    (and rest-ctc/#f
+         (let ([surface-id (rest-info-id (ctc:arrow-i-rest-property rest-ctc/#f))])
+           (lookup doms-checked-env surface-id void))))
+  (define (list-ctc-ty? ty)
+    (match (coerce-to-con ty)
+      ;; TODO: Figure out why the more natural version of this match causes a
+      ;; "unbound identifier in module" bug that I can't really track down
+      ;;[(Con*: (Listof: _) (Listof: _)) #t]
+      [(Con*: in out)
+       (match* (in out)
+         [((Listof: _) (Listof: _)) #t]
+         [(_ _) #f])]
+      [_ #f]))
+  (when (and rest-ctc-ty/#f (not (list-ctc-ty? rest-ctc-ty/#f)))
+    (define ty rest-ctc-ty/#f)
+    ;; TODO: remove this hack. We want the above error to be delayed but need
+    ;; the pattern match for make-arr* below to not blow up / signal a duplicate
+    ;; error.
+    (set! rest-ctc-ty/#f (-Con (make-Listof (Un)) (make-Listof Univ)))
+    (tc-error/fields
+     "#:rest contract must be a list contract"
+     #:delayed? #t
+     "#:rest contract type" ty))
+
   (define possible-rngs
     (append*
      (map
@@ -198,14 +246,21 @@
         (define kw (dom-info-type kw-info))
         (define ty (lookup doms-checked-env (dom-info-id kw-info) void))
         (make-Keyword kw (Con*in/out-ty ty) (dom-info-mandatory? kw-info)))
+      ;; Assumes list-ty is a list type. The usages in the make-arr* below are
+      ;; guarded by the list-ctc-ty? check above.
+      (define (list-contents-ty list-ty)
+        (match list-ty
+          [(Listof: ty) ty]))
       (values
        (make-arr* (map (compose Con*-out-ty dom-ty) doms)
                   (Con*-in-ty rng-ctc-ty)
-                  #:rest #f
+                  #:rest (and rest-ctc-ty/#f
+                              (list-contents-ty (Con*-out-ty rest-ctc-ty/#f)))
                   #:kws (map (kw-in/out Con*-out-ty) sorted-kw-doms))
        (make-arr* (map (compose Con*-in-ty dom-ty) doms)
                   (Con*-out-ty rng-ctc-ty)
-                  #:rest #f
+                  #:rest (and rest-ctc-ty/#f
+                              (list-contents-ty (Con*-in-ty rest-ctc-ty/#f)))
                   #:kws (map (kw-in/out Con*-in-ty) sorted-kw-doms)))))
   (ret (-Con (make-Function in-arrs) (make-Function out-arrs))))
 

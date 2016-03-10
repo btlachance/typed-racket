@@ -6,6 +6,7 @@
  (struct-out dom-info)
  (struct-out pre/post-info)
  (struct-out rng-info)
+ (struct-out rest-info)
  Con*-in-ty
  Con*-out-ty
  Con*:
@@ -52,6 +53,8 @@
 ;; -- `index' is the position of the range in a possibly multi-valued range. For
 ;;    a non-(values ...) range, then this will simply be 0
 (struct rng-info (id deps ctc index) #:transparent)
+
+(struct rest-info (id deps ctc) #:transparent)
 
 (define (Con*-in-ty ctc) (match ctc [(Con*: in out) in]))
 (define (Con*-out-ty ctc) (match ctc [(Con*: in out) out]))
