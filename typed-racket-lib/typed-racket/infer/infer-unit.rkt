@@ -10,7 +10,7 @@
 (require "../utils/utils.rkt"
          (except-in
           (combine-in
-           (utils tc-utils)
+           (utils tc-utils contract-utils)
            (rep free-variance type-rep prop-rep object-rep
                 values-rep rep-utils type-mask)
            (types utils abbrev numeric-tower subtype resolve
@@ -596,7 +596,9 @@
          (% cset-meet (cg T-pre S-pre) (cg S-post T-post))]
         [((and (PredicateFilter: (FilterSet: (TypeFilter: S-post _) _))
                (Function: (list (arr: (list S-pre) _ _ _ _))))
-          (FlatCon: T-pre T-post))
+          ;; Apparently I can't just have the FlatCon case -- is the inference
+          ;; not aware of the subtyping relation?
+          (Con*: T-pre T-post))
          (% cset-meet (cg T-pre S-pre) (cg S-post T-post))]
 
         ;; two structs with the same name

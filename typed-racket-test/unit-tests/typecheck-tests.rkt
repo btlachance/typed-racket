@@ -4642,6 +4642,9 @@
              (-Con Univ (t:Un))]
        [tc-err (and/c exact-integer? (lambda: ([x : Positive-Integer]) (even? x)))]
        [tc-err (and/c exact-integer? (lambda: ([x : String]) (equal? x "foo")))]
+       [tc-e (listof real?)
+             (-Con (make-Listof Univ) (make-Listof -Real))]
+       [tc-err (syntax/c (->/c any/c any/c))]
        )
 
   (test-suite
