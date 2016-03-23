@@ -37,7 +37,14 @@
   [>=/c (-> -Real (-FlatCon Univ -Real))]
   [between/c (-> -Real -Real (-FlatCon Univ -Real))]
   [real-in (-> -Real -Real (-FlatCon Univ -Real))]
-  [integer-in (-> -Integer -Integer (-FlatCon Univ -Integer))]
+  [integer-in (cl->*
+               ;; using -Integer here because the second argument, unless we're
+               ;; dealing with negative numbers, won't influence the type. This
+               ;; way args like (-PosInt, -Integer) will still give us the
+               ;; information that we want.
+               (-> -PosInt -Integer (-FlatCon Univ -PosInt))
+               (-> -Nat -Integer (-FlatCon Univ -Nat))
+               (-> -Integer -Integer (-FlatCon Univ -Integer)))]
   [natural-number/c (-FlatCon Univ -Nat)]
   [string-len/c (-> -Real (-FlatCon Univ -String))]
   [false/c (-FlatCon Univ -False)]

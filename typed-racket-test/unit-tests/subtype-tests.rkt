@@ -731,6 +731,7 @@
     (-FlatCon Univ -Integer)]
    [(-> Univ -Boolean : (-FS (-filter -Integer 0) -top))
     (-FlatCon Univ -Real)]
+   [(-> -String (Un -Boolean -Number)) (-FlatCon -String -String)]
    ))
 
 

@@ -4512,7 +4512,7 @@
        [tc-e (>=/c 43) (-FlatCon Univ -Real)]
        [tc-e (between/c 13 31) (-FlatCon Univ -Real)]
        [tc-e (real-in 24 43) (-FlatCon Univ -Real)]
-       [tc-e (integer-in 17 71) (-FlatCon Univ -Integer)]
+       [tc-e (integer-in 17 71) (-FlatCon Univ -PosInt)]
        [tc-e false/c (-FlatCon Univ -False)]
        [tc-e (flat-named-contract 'positive? (>/c 0))
              (-FlatCon Univ -Real)]

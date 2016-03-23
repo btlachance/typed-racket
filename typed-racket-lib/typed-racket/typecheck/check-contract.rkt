@@ -372,5 +372,6 @@
   (unless (subtype (lookup-type defn-id) in-ty)
     (tc-error/fields "contract is incompatible with type"
                      #:delayed? #t
+                     "id" (syntax->datum defn-id)
                      "type" (lookup-type defn-id)
                      "contract type" (coerce-to-con (tc-expr/t ctc)))))
