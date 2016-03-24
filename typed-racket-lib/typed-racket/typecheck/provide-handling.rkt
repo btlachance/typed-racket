@@ -169,31 +169,20 @@
     (with-syntax* ([id internal-id]
                    [untyped-id (freshen-id #'id)]
                    [local-untyped-id (freshen-id #'id)]
-                   [export-id new-id]
-                   [typed-ctc-id (freshen-id #'id)]
-                   [typed-ctc-id-export (format-id #'id "ty-ctc-~a" internal-id)]
-                   [local-typed-ctc-id (freshen-id #'id)])
-      (define user-contract? (user-contract-property #'id))
+                   [export-id new-id])
       (define/with-syntax ctc (generate-temporary 'generated-contract))
-      (define/with-syntax ty-ctc (generate-temporary 'generated-contract))
       ;; Create the definitions of the contract and the contracted export.
       (define/with-syntax definitions
         (contract-def/provide-property
-         #'(define-values (ctc ty-ctc) #f)
-         (list ty #'untyped-id #'id pos-blame-id #'typed-ctc-id)))
+         #'(define-values (ctc) #f)
+         (list ty #'untyped-id #'id pos-blame-id)))
       (values
        ;; For the submodule
-       #`(begin definitions (provide untyped-id
-                                     #,(if user-contract?
-                                         #'(rename-out [typed-ctc-id typed-ctc-id-export])
-                                         #'(combine-out))))
+       #`(begin definitions (provide untyped-id))
        ;; For the main module
        #`(begin (define-syntax local-untyped-id (#,mk-redirect-id (quote-syntax untyped-id)))
-                #,(if user-contract?
-                      #`(begin
-                          (define-syntax local-typed-ctc-id (#,mk-redirect-id (quote-syntax typed-ctc-id-export)))
-                          (define-syntax export-id (make-typed-renaming #'local-typed-ctc-id  #'local-untyped-id)))
-                      #'(define-syntax export-id (make-typed-renaming #'id #'local-untyped-id))))
+                (define-syntax export-id
+                  (make-typed-renaming #'id #'local-untyped-id)))
        new-id
        null)))
 

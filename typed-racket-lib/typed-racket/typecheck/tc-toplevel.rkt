@@ -139,8 +139,9 @@
        (list)]
 
       ;; definitions lifted from contracts should be ignored
-      [(define-values (lifted) expr)
-       #:when (contract-lifted-property #'expr)
+      [(define-values (lifted ...) expr)
+       #:when (or (contract-lifted-property #'expr)
+                  (contract-lifted-property form))
        #:do [(register-ignored! #'expr)]
        (list)]
       
@@ -201,11 +202,25 @@
   (parameterize ([current-orig-stx form])
     (syntax-parse form
       #:literals (define-values begin)
-      [(~or _:ignore^ _:ignore-some^) (list)]
+      [(~or _:ignore^ _:ignore-some^)
+       ;; p/c-transformer bindings have this property
+       #:when (not (syntax-property form 'provide/contract-original-contract))
+       (list)]
+
+      [(~and _:ignore^ (define-values (v ...) . rest))
+       ;; p/c puts this property on more than the transformer, but we ignore the
+       ;; rest
+       #:when (syntax-property form 'provide/contract-original-contract)
+       (list)]
+
+      [(define-syntaxes (p/c-for-id) (_ _ _ _ (_ id) . _))
+       #:when (syntax-property form 'provide/contract-original-contract)
+       (list (make-def-binding #'p/c-for-id (lookup-type/lexical #'id)))]
 
       ;; definitions lifted from contracts should be ignored
-      [(define-values (lifted) expr)
-       #:when (contract-lifted-property #'expr)
+      [(define-values (lifted ...) expr)
+       #:when (or (contract-lifted-property #'expr)
+                  (contract-lifted-property form))
        #:do [(register-ignored! #'expr)]
        (list)]
 
@@ -269,11 +284,20 @@
            (check-below lexical-type expected-type)))
        (register-ignored! #'dviu)
        'no-type]
-      [(define-values () (begin ctc _ ...))
+
+      ;; TODO: move this into pass1.5? pass2 is apparently supposed to be for
+      ;; toplevel expressions
+      [(define-values (ctc-id) ctc)
        #:when (ctc:check-contract-for-property form)
+       ;; TODO: if this id is a binding that was require/typed, then this fails.
+       ;; require/typed replaces usages of the id the user wrote with a binding
+       ;; that is a rename-transformer pointing at the contracted version of
+       ;; the id the user wrote
        (define id (ctc:check-contract-for-property form))
+       ;; TODO: check-contract calls tc-expr, but we shouldn't typecheck twice
        (check-contract id #'ctc)
        'no-type]
+
       ;; these forms we have been instructed to ignore
       [(~and stx:ignore^ (~not :ctc:arrow-i^))
        'no-type]
@@ -292,8 +316,9 @@
       [(module* n spec body ...) 'no-type]
 
       ;; definitions lifted from contracts should be ignored
-      [(define-values (lifted) expr)
-       #:when (contract-lifted-property #'expr)
+      [(define-values (lifted ...) expr)
+       #:when (or (contract-lifted-property #'expr)
+                  (contract-lifted-property form))
        #:do [(register-ignored! #'expr)]
        'no-type]
 

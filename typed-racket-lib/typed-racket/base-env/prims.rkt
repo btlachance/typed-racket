@@ -114,6 +114,8 @@ the typed racket language.
          racket/unsafe/ops
          racket/flonum ; for for/flvector and for*/flvector
          racket/extflonum ; for for/extflvector and for*/extflvector
+         (prefix-in untyped: racket/contract/base)
+         racket/provide-syntax
          (only-in "../types/numeric-predicates.rkt" index?)
          (submod "../typecheck/internal-forms.rkt" forms)
          (submod "prims-contract.rkt" forms)
@@ -932,24 +934,34 @@ the typed racket language.
   (base-for/flvector: for*: ExtFlonum extflvector make-extflvector unsafe-extflvector-ref
                       unsafe-extflvector-set! extflvector-copy e ...))
 
+(define-syntax (provide/contract stx)
+  (define-syntax-class id+ctc
+    (pattern [id ctc]
+             #:with id-ctc (format-id stx "~a-ctc" #'id)
+             #:attr def (ctc:check-contract-for-property
+                         #'(define id-ctc ctc)
+                         #'id)
+             #:attr form #'[id id-ctc]))
+  (syntax-parse stx
+    [(_ p:id+ctc ...)
+     ;; TODO: I didn't think I would have to lift this, too; we have to when
+     ;; someone uses provide/contract directly and not via contract-out. I
+     ;; thought p/c as it's impl'd today allows forward references, yet for
+     ;; whatever reason how I'm using it here doesn't seem to work.
+     (syntax-local-lift-module-end-declaration
+      (ignore #`(begin
+                  #,@(attribute p.def)
+                  ;; use racket's provide/contract because its contract-out
+                  ;; doesn't leave the provide/contract-original-contract prop
+                  ;; on the transformer binding
+                  (untyped:provide/contract #,@(attribute p.form)))))
+     #'(void)]))
 (define-syntax contract-out
   (make-provide-pre-transformer
    (lambda (stx modes)
      (syntax-parse stx
-       [(_ [id:id ctc:expr] ...)
-        ;; have to combine-out since I'm not sure how to splice the ids into
-        ;; the position the contract-out was in
-        #`(combine-out
-           #,@(for/list ([id (syntax->list #'(id ...))]
-                         [ctc (syntax->list #'(ctc ...))])
-
-                (syntax-local-lift-module-end-declaration
-                 ;; not an internal form because we need ctc to expand
-                 (ctc:check-contract-for-property
-                  #`(define-values ()
-                     (begin
-                       #,ctc
-                       #,(ignore #`(values))))
-                  id))
-                ;; ctc gets attached during provide handling
-                (user-contract-property id ctc)))]))))
+       [(_ [id ctc] ...)
+        ;; TODO: Not sure why I had to lift this, for similar reasons as above
+        (syntax-local-lift-module-end-declaration
+         #'(provide/contract [id ctc] ...))
+        #'(combine-out)]))))
