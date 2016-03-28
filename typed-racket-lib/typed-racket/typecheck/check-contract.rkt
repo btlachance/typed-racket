@@ -8,6 +8,7 @@
          syntax/id-table
          syntax/parse
          "../utils/utils.rkt"
+         (typecheck check-below)
          (env global-env type-alias-helper type-env-structs lexical-env)
          (types subtype abbrev tc-result match-expanders union numeric-tower)
          (only-in (infer infer)
@@ -128,6 +129,9 @@
   (for/list ([id topo-sorted-ids])
     (findf (ctc-matcher-for-id id) ctcs)))
 
+(define ((mk/lookup-fail name) id)
+  (int-err (format "couldn't find ~a in ~a" id name)))
+
 (define (tc-arrow-i-contract form)
   (define arrow-subforms (or (syntax->list form) (list)))
   (when (empty? arrow-subforms)
@@ -174,12 +178,14 @@
       (syntax-parse ctc
         [(_ deps ... ctc)
          (values #'(deps ...) #'ctc)]))
+    (define lookup-fail (mk/lookup-fail "deps-env"))
     (define deps-env
       (for/fold ([env env])
                 ([surface-id surface-deps]
                  [expanded-id (in-syntax expanded-deps)])
-        (extend env expanded-id (Con*-out-ty (lookup env surface-id void)))))
+        (extend env expanded-id (Con*-out-ty (lookup env surface-id lookup-fail)))))
     (with-lexical-env deps-env
+      (printf "deps-env: ~a\n" (pretty-format deps-env))
       (coerce-to-con (tc-expr/t expanded-ctc))))
 
   (define doms-checked-env
@@ -195,7 +201,7 @@
   (define rest-ctc-ty/#f
     (and rest-ctc/#f
          (let ([surface-id (rest-info-id (ctc:arrow-i-rest-property rest-ctc/#f))])
-           (lookup doms-checked-env surface-id void))))
+           (lookup doms-checked-env surface-id (mk/lookup-fail "doms-checked-env")))))
   (define (list-ctc-ty? ty)
     (match (coerce-to-con ty)
       ;; TODO: Figure out why the more natural version of this match causes a
@@ -224,9 +230,12 @@
       arrow-subforms)))
   (when (zero? (length possible-rngs))
     (int-err "no range contract found when typechecking ->i expansion"))
+  (when (not (= 1 (length possible-rngs)))
+    (int-err "multiple possible-rngs when typechecking ->i expansion"))
   (define rng-ctc (first possible-rngs))
   (define rng-ctc->deps (compose rng-info-deps ctc:arrow-i-rng-property))
   (define rng-ctc-ty (check-subcontract rng-ctc rng-ctc->deps doms-checked-env))
+  (check-below rng-ctc-ty (-Con (Un) Univ))
 
   (define dom-infos (map ctc:arrow-i-dom-property expanded-doms))
   (define-values (kw-doms plain-doms)
@@ -240,11 +249,12 @@
                ([vararg-slice-length (in-range (add1 opt-count))])
       (define opts (take opt-plain-doms vararg-slice-length))
       (define doms (append reqd-plain-doms opts))
+      (define lookup-fail (mk/lookup-fail "doms-checked-env"))
       ;; TODO: dom-ty should be able to look up the type in doms-checked-env
-      (define (dom-ty d) (lookup doms-checked-env (dom-info-id d) void))
+      (define (dom-ty d) (lookup doms-checked-env (dom-info-id d) lookup-fail))
       (define ((kw-in/out Con*in/out-ty) kw-info)
         (define kw (dom-info-type kw-info))
-        (define ty (lookup doms-checked-env (dom-info-id kw-info) void))
+        (define ty (lookup doms-checked-env (dom-info-id kw-info) lookup-fail))
         (make-Keyword kw (Con*in/out-ty ty) (dom-info-mandatory? kw-info)))
       ;; Assumes list-ty is a list type. The usages in the make-arr* below are
       ;; guarded by the list-ctc-ty? check above.
@@ -364,7 +374,8 @@
     ;; TODO: replace this with an error
     [_ (tc-error/fields "could not coerce to a contract type"
                         #:delayed? #t
-                        "type" ty)]])
+                        "type" ty)
+       (-Con (Un) Univ)]])
 
 ;; check-contract : identifier syntax -> [void]
 (define (check-contract defn-id ctc)
