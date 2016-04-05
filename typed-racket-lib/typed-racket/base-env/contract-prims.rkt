@@ -57,11 +57,11 @@
   ;; box/c
   ;; box-immutable/c
   [listof (-poly (a b) (-> (-Con a b) (-Con (-lst a) (-lst b))))]
-  [non-empty-listof (-poly (a b) (-> (-Con a b) (-Con (-lst a) (-lst b))))]
+  [non-empty-listof (-poly (a b) (-> (-Con a b) (-Con (-lst a) (-pair b (-lst b)))))]
   [list*of (-poly (a b) (-> (-Con a b) (-Con (-mu x (-pair a (Un a x)))
                                              (-mu x (-pair b (Un b x))))))]
-  [cons/c (-poly (a b c d) (-> (-Con a b) (-Con c d) (-Con (-pair b c)
-                                                           (-pair a d))))]
+  [cons/c (-poly (a b c d) (-> (-Con a b) (-Con c d) (-Con (-pair a c)
+                                                           (-pair b d))))]
   ;; cons/dc
   [syntax/c (-poly (a b) (-> (-FlatCon a b) (-FlatCon (-Syntax a) (-Syntax b))))]
   ;; struct/c
