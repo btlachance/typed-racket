@@ -183,12 +183,13 @@
     (if (dom? ctc)
         (dom-ctc->deps ctc)
         (rng-ctc->deps ctc)))
+  (define ctcs (append expanded-doms rngs))
   (define-values (topo-sorted-dom-ctcs topo-sorted-rng-ctcs)
     (partition
      dom?
      (topo-sort-ctcs (if rest-ctc/#f
-                         (cons (rest-ctc->dom-ctc rest-ctc/#f) expanded-doms)
-                         expanded-doms)
+                         (cons (rest-ctc->dom-ctc rest-ctc/#f) ctcs)
+                         ctcs)
                      dom/rng-ctc->id
                      dom/rng-ctc->deps)))
 
@@ -246,6 +247,40 @@
      #:delayed? #t
      "#:rest contract type" ty))
 
+  ;; if we didn't care about the order of error messages, we could check all
+  ;; of the conditions using rng-checked-env
+  (define (check-pre/post expr env expr->deps expr->desc?)
+    (define-values (expanded-deps expanded-expr)
+      (syntax-parse expr
+        [(_ () deps ... expr)
+         (values #'(deps ...) #'expr)]))
+    (define lookup-fail (mk/lookup-fail "pre/post deps-env"))
+    (define surface-deps (or (expr->deps expr) (list)))
+    (define deps-env
+      (for/fold ([env env])
+                ([surface-id surface-deps]
+                 [expanded-id (in-syntax expanded-deps)])
+        (extend env expanded-id (Con*-out-ty (lookup env surface-id lookup-fail)))))
+    (with-lexical-env deps-env
+      (check-below (tc-expr/t expanded-expr)
+                   (if (expr->desc? expr)
+                       (Un -Boolean -String (-lst -String))
+                       Univ))))
+    
+  (define is-pre? ctc:arrow-i-pre-property)
+  (define (pre-dont-recur? form)
+    (or (is-arrow-i? form) (is-pre? form)))
+  (define pres
+    (append*
+     (map
+      (λ (form) (trawl-for-subs form pre-dont-recur? is-pre?))
+      arrow-subforms)))
+  (define pre->deps (compose pre-info-deps ctc:arrow-i-pre-property))
+  (define pre->position (compose pre-info-position ctc:arrow-i-pre-property))
+  (define pre->desc? (compose pre-info-desc? ctc:arrow-i-pre-property))
+  (for-each (λ (p) (check-pre/post p doms-checked-env pre->deps pre->desc?))
+            (sort pres < #:key pre->position))
+
   (define rng-checked-env
     (for/fold ([env doms-checked-env])
               ([ctc topo-sorted-rng-ctcs])
@@ -264,6 +299,22 @@
       (define ctc-ty (check-subcontract ctc rng-ctc->deps rng-checked-env))
       (values (Con*-in-ty ctc-ty) (Con*-out-ty ctc-ty))))
   ;(check-below rng-ctc-ty (-Con (Un) Univ))
+
+  (define is-post? ctc:arrow-i-post-property)
+  (define (post-dont-recur? form)
+    (or (is-arrow-i? form) (is-post? form)))
+  (define posts
+    (append*
+     (map
+      (λ (form) (trawl-for-subs form post-dont-recur? is-post?))
+      arrow-subforms)))
+  (define post-infos (map ctc:arrow-i-post-property posts))
+  (define post->deps (compose post-info-deps ctc:arrow-i-post-property))
+  (define post->desc? (compose post-info-desc? ctc:arrow-i-post-property))
+  (define post->position (compose post-info-position ctc:arrow-i-post-property))
+  (for-each (λ (p) (check-pre/post p rng-checked-env post->deps post->desc?))
+            (sort posts < #:key post->position))
+
 
   (define dom-infos (map ctc:arrow-i-dom-property expanded-doms))
   (define-values (kw-doms plain-doms)

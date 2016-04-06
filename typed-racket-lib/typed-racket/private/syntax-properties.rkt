@@ -98,6 +98,8 @@
   (ctc:arrow-i-rng ctc:arrow-i-rng) ;; (list Name Syntax (list Dep))
   (ctc:arrow-i-rng-ctc ctc:arrow-i-rng-ctc #:mark)
   (ctc:arrow-i-rest ctc:arrow-i-rest)
+  (ctc:arrow-i-pre ctc:arrow-i-pre)
+  (ctc:arrow-i-post ctc:arrow-i-post)
   (ctc:and/c ctc:and/c #:mark)
   (ctc:and/c-sub ctc:and/c-sub)
   (ctc:or/c ctc:or/c #:mark)

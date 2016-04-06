@@ -4,6 +4,7 @@
          (for-syntax racket/base
                      racket/sequence
                      racket/syntax
+                     racket/list
                      syntax/parse
                      syntax/transformer
                      (types abbrev numeric-tower union)
@@ -160,6 +161,67 @@
                                   ;; we'll put all the properties there
                                   #`(begin #,@(or (attribute dom.deps) (list)) dom.ctc)
                                   info))))))
+  ;; TODO: parameterized syntax class for streamlining pre/post conditions
+  (define pre-counter 0)
+  ;; pre-condition->forms : Syntax Syntax #:desc? [Option<Boolean>] #:name [Option<String>] -> Listof<(U Syntax Listof<Syntax>)>
+  (define (pre-condition->forms deps condition #:desc? [desc? #f] #:name [name #f])
+    (define kw
+      (cond
+        [desc? #'#:pre/desc]
+        [name #'#:pre/name]
+        [else #'#:pre]))
+    (list kw
+          deps
+          (if name (list name) (list))
+          (ctc:arrow-i-pre-property
+           #`(let () #,@deps #,condition)
+           (pre-info (syntax->list deps)
+                     (begin0 pre-counter
+                       (set! pre-counter (add1 pre-counter)))
+                     desc?))))
+  (define-splicing-syntax-class pre-condition
+    #:attributes (forms)
+    (pattern (~seq #:pre (deps:id ...) condition)
+             #:attr forms
+             (pre-condition->forms #'(deps ...) #'condition))
+    (pattern (~seq #:pre/desc (deps:id ...) condition)
+             #:attr forms
+             (pre-condition->forms #'(deps ...) #'condition #:desc? #t))
+    (pattern (~seq #:pre/name (deps:id ...) name:str condition)
+             #:attr forms
+             (pre-condition->forms #'(deps ...) #'condition #:name #'name)))
+  (define post-counter 0)
+  ;; post-condition->form : Syntax Syntax #:desc? [Option<Boolean>] #:name [Option<String>] -> Listof<(U Syntax Listof<Syntax>)>
+  (define (post-condition->forms deps condition #:desc? [desc? #f] #:name [name #f])
+    (define kw
+      (cond
+        [desc? #'#:post/desc]
+        [name #'#:post/name]
+        [else #'#:post]))
+    (list kw
+          deps
+          (if name (list name) (list))
+          (ctc:arrow-i-post-property
+           ;; we use an empty let instead of a begin because the begin
+           ;; was getting expanded away, making it much harder to
+           ;; analyze the deps and condition as a single unit
+           #`(let () #,@deps #,condition)
+           (post-info (syntax->list deps)
+                      (begin0 post-counter
+                        (set! post-counter (add1 post-counter)))
+                      desc?))))
+  (define-splicing-syntax-class post-condition
+    #:attributes (forms)
+    (pattern (~seq #:post (deps:id ...) condition)
+             #:attr forms
+             (post-condition->forms #'(deps ...) #'condition))
+    (pattern (~seq #:post/desc (deps:id ...) condition)
+             #:attr forms
+             (post-condition->forms #'(deps ...) #'condition #:desc? #t))
+    (pattern (~seq #:post/name (deps:id ...) name:str condition)
+             #:attr forms
+             (post-condition->forms #'(deps ...) #'condition #:name #'name)))
+    
   (define rng-counter 0)
   ;; MUTATES: modifies rng-counter
   (define (rng-id+ctc->form rng)
@@ -197,13 +259,18 @@
     [(->i ((~var mand-doms (dom #t)) ...)
           (~optional ((~var opt-doms (dom #f)) ...))
           (~optional rest:dependent-rest)
-          rng:dependent-range)
+          (~optional (~seq pre:pre-condition ...))
+          rng:dependent-range
+          (~optional (~seq post:post-condition ...)))
      (ctc:arrow-i
       (ignore
        #`(untyped:->i (#,@(apply append (map syntax->list (or (attribute mand-doms.form)
                                                               (list)))))
                       (#,@(apply append (map syntax->list (or (attribute opt-doms.form)
                                                               (list)))))
+                      #,@(if (attribute pre)
+                             (flatten (attribute pre.forms))
+                             (list))
                       #,@(if (attribute rest)
                              (list #'#:rest #`[rest.id
                                                #,@(or (and (attribute rest.deps) (list (attribute rest.deps)))
@@ -216,5 +283,8 @@
                                                                  (list))
                                                              #'rest.ctc))])
                              (list))
-                      rng.form)))]))
+                      rng.form
+                      #,@(if (attribute post)
+                             (flatten (attribute post.forms))
+                             (list)))))]))
 

@@ -4,7 +4,8 @@
  (rep type-rep filter-rep))
 (provide
  (struct-out dom-info)
- (struct-out pre/post-info)
+ (struct-out post-info)
+ (struct-out pre-info)
  (struct-out rng-info)
  (struct-out rest-info)
  Con*-in-ty
@@ -30,17 +31,14 @@
 ;; -- `mandatory?' is #t if the domain is mandatory, #f otherwise
 (struct dom-info (id deps ctc type mandatory?) #:transparent)
 
-;; pre/post-info is a (pre/post-info Option<Syntax> Option<Deps> Syntax Natural)
+;; pre/post-info is a (pre/post-info Option<Deps> Natural Boolean)
 ;; Note: its components contain unexpanded/surface syntax.
-;; -- `id' is the syntax of the id for a named pre/post condition, #f if unnamed
 ;; -- `deps' is either a possible empty Listof<Syntax> for the list of
 ;;    identifiers this condition depends on or false if there are none
-;; -- `condition' is the syntax the user wrote for this condition
-;; -- `position' is the relative position of this condition among other
-;;    conditions of the same type
-;; Note: this requires keeping the pre/post conditions separate via other means
-;; and not mixing pre condition info structs with post condition info structs
-(struct pre/post-info (id deps condition position) #:transparent)
+;; -- `position' is the position of this condition relative to other conditions
+;; -- `desc?' is true if the condition is a /desc variant; false otherwise
+(struct pre-info (deps position desc?) #:transparent)
+(struct post-info (deps position desc?) #:transparent)
 
 ;; rng-info is a (rng-info Option<Syntax> Option<Deps> Syntax Natural)
 ;; Note: its components contain unexpanded/surface syntax.
