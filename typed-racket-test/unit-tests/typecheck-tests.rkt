@@ -4507,7 +4507,7 @@
              (-Con Univ (t:Un))]
        [tc-e (>/c 10) (-FlatCon Univ -Real)]
        [tc-e (</c 31) (-FlatCon Univ -Real)]
-       [tc-e (=/c 13) (-FlatCon Univ -Real)]
+       [tc-e (=/c 13) (-FlatCon Univ -Nat)]
        [tc-e (<=/c 24) (-FlatCon Univ -Real)]
        [tc-e (>=/c 43) (-FlatCon Univ -Real)]
        [tc-e (between/c 13 31) (-FlatCon Univ -Real)]
@@ -4613,6 +4613,32 @@
                           [r2 (r1 y) (>/c (+ r1 y))]))
              (-Con (t:-> -Real -Real (make-Values (list (-result Univ) (-result Univ))))
                    (t:-> Univ Univ (make-Values (list (-result -Real) (-result -Real)))))]
+       [tc-e (->i () #:pre () #t [_ any/c])
+             (-Con (t:-> Univ) (t:-> Univ))]
+       [tc-e (->i () [_ any/c] #:post () #t)
+             (-Con (t:-> Univ) (t:-> Univ))]
+       [tc-e (->i () #:pre/name () "named-pre" #t [_ any/c])
+             (-Con (t:-> Univ) (t:-> Univ))]
+       [tc-e (->i () [_ any/c] #:post/name () "named-post" #t)
+             (-Con (t:-> Univ) (t:-> Univ))]
+       [tc-err (let ()
+                 (->i () #:pre/desc () 0 [_ any/c])
+                 (void))
+               #:ret (ret -Void)
+               #:msg #rx"expected:(.*(Boolean|String|\\(Listof String\\)))+"]
+       [tc-err (let ()
+                 (->i () [_ any/c] #:post/desc () 0)
+                 (void))
+               #:ret (ret -Void)
+               #:msg #rx"expected:(.*(Boolean|String|\\(Listof String\\)))+"]
+       [tc-e (->i ([x natural-number/c]
+                   [y natural-number/c])
+                  [result (x y) (=/c (+ x y))]
+                  #:post (result x y)
+                  (and (= (- result x) y)
+                       (= (- result y) x)))
+             (-Con (t:-> -Nat -Nat Univ)
+                   (t:-> Univ Univ -Nat))]
        ;; Tests for various literals that Racket treats as contracts. This
        ;; should be all of the cases covered by coerce-contract/f in guts. list?
        ;; and pair?  are special-cased in guts, yet they're handled in TR by the

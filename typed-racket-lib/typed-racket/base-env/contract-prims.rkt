@@ -31,7 +31,10 @@
   [any/c (-FlatCon Univ Univ)]
   [none/c (-FlatCon Univ Univ)]
   [not/c (-poly (a b) (-> (-FlatCon a b) (-FlatCon a a)))]
-  [=/c (-> -Real (-FlatCon Univ -Real))]
+  [=/c (cl->*
+        (-> -Nat (-FlatCon Univ -Nat))
+        (-> -Integer (-FlatCon Univ -Integer))
+        (-> -Real (-FlatCon Univ -Real)))]
   [</c (-> -Real (-FlatCon Univ -Real))]
   [>/c (-> -Real (-FlatCon Univ -Real))]
   [<=/c (-> -Real (-FlatCon Univ -Real))]
