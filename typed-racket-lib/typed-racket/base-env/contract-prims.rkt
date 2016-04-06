@@ -160,13 +160,34 @@
                                   ;; we'll put all the properties there
                                   #`(begin #,@(or (attribute dom.deps) (list)) dom.ctc)
                                   info))))))
+  (define rng-counter 0)
+  ;; MUTATES: modifies rng-counter
+  (define (rng-id+ctc->form rng)
+    (syntax-parse rng
+      [rng:id+ctc
+       (define index (+ rng-counter 1))
+       (set! rng-counter index)
+       (define info (rng-info #'rng.id (attribute rng.deps) #'rng.ctc index))
+       (define new-ctc #`(begin #,@(or (attribute rng.deps) (list)) rng.ctc))
+       #`[rng.id
+          #,@(or (and (attribute rng.deps) (list (attribute rng.deps)))
+                 (list))
+          #,(ctc:arrow-i-rng-property new-ctc info)]]))
   (define-syntax-class dependent-range
-    #:attributes ((deps 1) ctc id)
+    #:attributes (form)
     (pattern (~literal any)
-             #:attr (deps 1) #f
-             #:attr ctc #'any
-            #:attr id #'_)
-    (pattern :id+ctc))
+             #:attr form
+             (ctc:arrow-i-rng-property
+              #'untyped:any
+              (rng-info #f #f #'any 0)))
+    (pattern ((~literal values) rng:id+ctc ...)
+             #:attr form
+             #`(values #,@(map rng-id+ctc->form (syntax->list #'(rng ...)))))
+    ;; TODO: this overlaps with the (values id+ctc ...) case, so the order of
+    ;; these matters -- fix that? is it cleaner to just note the order matters?
+    (pattern rng:id+ctc
+             #:attr form
+             (rng-id+ctc->form #'rng)))
   (define-splicing-syntax-class dependent-rest
     #:attributes ((deps 1) ctc id)
     (pattern (~seq #:rest :id+ctc)))
@@ -195,17 +216,5 @@
                                                                  (list))
                                                              #'rest.ctc))])
                              (list))
-                      (rng.id
-                       #,@(or (and (attribute rng.deps) (list (attribute rng.deps)))
-                              (list))
-                       #,(ctc:arrow-i-rng-property
-                          #`(begin #,@(or (attribute rng.deps) (list))
-                                   rng.ctc)
-                          (rng-info #'rng.id
-                                    (or (attribute rng.deps)
-                                        (list))
-                                    #'rng.ctc
-                                    ;; multi-value ranges will need to use this
-                                    ;; field
-                                    0))))))]))
+                      rng.form)))]))
 

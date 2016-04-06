@@ -143,8 +143,8 @@
       (map
        (λ (form) (trawl-for-doms/rng form ctc:arrow-i-dom-property is-arrow-i?))
        arrow-subforms))
-     free-identifier=?
-     #:key (lambda (ctc) (dom-info-id (ctc:arrow-i-dom-property ctc)))))
+     equal?
+     #:key (lambda (ctc) (dom-info-type (ctc:arrow-i-dom-property ctc)))))
   (define rest-ctc/#f
     (ormap
      (λ (x) x)
@@ -162,12 +162,35 @@
       (rest-info-ctc rest)
       +inf.0
       #t)))
-  (define topo-sorted-dom-ctcs
-    (topo-sort-ctcs (if rest-ctc/#f
-                        (cons (rest-ctc->dom-ctc rest-ctc/#f) expanded-doms)
-                        expanded-doms)
-                    dom-ctc->id
-                    dom-ctc->deps))
+  (define rngs
+    (remove-duplicates
+     (append*
+      (map
+       (λ (form) (trawl-for-doms/rng form ctc:arrow-i-rng-property is-arrow-i?))
+       arrow-subforms))
+     =
+     #:key (lambda (ctc) (rng-info-index (ctc:arrow-i-rng-property ctc)))))
+  (when (zero? (length rngs))
+    (int-err "no range contract found when typechecking ->i expansion"))
+  (define dom? ctc:arrow-i-dom-property)
+  (define rng-ctc->id (compose rng-info-id ctc:arrow-i-rng-property))
+  (define rng-ctc->deps (compose rng-info-deps ctc:arrow-i-rng-property))
+  (define (dom/rng-ctc->id ctc)
+    (if (dom? ctc)
+        (dom-ctc->id ctc)
+        (rng-ctc->id ctc)))
+  (define (dom/rng-ctc->deps ctc)
+    (if (dom? ctc)
+        (dom-ctc->deps ctc)
+        (rng-ctc->deps ctc)))
+  (define-values (topo-sorted-dom-ctcs topo-sorted-rng-ctcs)
+    (partition
+     dom?
+     (topo-sort-ctcs (if rest-ctc/#f
+                         (cons (rest-ctc->dom-ctc rest-ctc/#f) expanded-doms)
+                         expanded-doms)
+                     dom/rng-ctc->id
+                     dom/rng-ctc->deps)))
 
   ;; check-subcontract : Stx (Stx -> Listof Stx) Env -> Type/c
   ;; Calculates the type of ctc. All its dependencies must have their surface
@@ -223,19 +246,24 @@
      #:delayed? #t
      "#:rest contract type" ty))
 
-  (define possible-rngs
-    (append*
-     (map
-      (λ (form) (trawl-for-doms/rng form ctc:arrow-i-rng-property is-arrow-i?))
-      arrow-subforms)))
-  (when (zero? (length possible-rngs))
-    (int-err "no range contract found when typechecking ->i expansion"))
-  (when (not (= 1 (length possible-rngs)))
-    (int-err "multiple possible-rngs when typechecking ->i expansion"))
-  (define rng-ctc (first possible-rngs))
-  (define rng-ctc->deps (compose rng-info-deps ctc:arrow-i-rng-property))
-  (define rng-ctc-ty (check-subcontract rng-ctc rng-ctc->deps doms-checked-env))
-  (check-below rng-ctc-ty (-Con (Un) Univ))
+  (define rng-checked-env
+    (for/fold ([env doms-checked-env])
+              ([ctc topo-sorted-rng-ctcs])
+      (define ctc-ty (check-subcontract ctc rng-ctc->deps env))
+      (extend env (rng-ctc->id ctc) ctc-ty)))
+  (define rng-ctcs (sort rngs < #:key (compose rng-info-index ctc:arrow-i-rng-property)))
+  (define-values (rng-in-tys rng-out-tys)
+    (for/lists (in-tys out-tys)
+               ([ctc rng-ctcs])
+      (define lookup-fail (mk/lookup-fail "rng-checked-env"))
+      ;; TODO: we're calling check-subcontract twice by calling it here, but I'm
+      ;; not sure of another way to handle the two cases: a) when the ctc has
+      ;; deps, rng-checked-env doesn't contain entries for its expanded deps
+      ;; which makes calling tc-expr/t not work b) when the ctc is unnamed, we
+      ;; can't look its type up in rng-checked-env because it has no id
+      (define ctc-ty (check-subcontract ctc rng-ctc->deps rng-checked-env))
+      (values (Con*-in-ty ctc-ty) (Con*-out-ty ctc-ty))))
+  ;(check-below rng-ctc-ty (-Con (Un) Univ))
 
   (define dom-infos (map ctc:arrow-i-dom-property expanded-doms))
   (define-values (kw-doms plain-doms)
@@ -263,12 +291,12 @@
           [(Listof: ty) ty]))
       (values
        (make-arr* (map (compose Con*-out-ty dom-ty) doms)
-                  (Con*-in-ty rng-ctc-ty)
+                  (make-Values (map (λ (ty) (-result ty -top-filter -empty-obj)) rng-in-tys))
                   #:rest (and rest-ctc-ty/#f
                               (list-contents-ty (Con*-out-ty rest-ctc-ty/#f)))
                   #:kws (map (kw-in/out Con*-out-ty) sorted-kw-doms))
        (make-arr* (map (compose Con*-in-ty dom-ty) doms)
-                  (Con*-out-ty rng-ctc-ty)
+                  (make-Values (map (λ (ty) (-result ty -top-filter -empty-obj)) rng-out-tys))
                   #:rest (and rest-ctc-ty/#f
                               (list-contents-ty (Con*-in-ty rest-ctc-ty/#f)))
                   #:kws (map (kw-in/out Con*-in-ty) sorted-kw-doms)))))

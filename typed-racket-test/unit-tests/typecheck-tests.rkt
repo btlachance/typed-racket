@@ -4607,6 +4607,12 @@
                  (void))
                #:ret (ret -Void)
                #:msg "#:rest contract must be a list contract"]
+       [tc-e (->i ([x real?]
+                   [y real?])
+                  (values [_ (x) (>/c x)]
+                          [_ (y) (>/c y)]))
+             (-Con (t:-> -Real -Real (make-Values (list (-result Univ) (-result Univ))))
+                   (t:-> Univ Univ (make-Values (list (-result -Real) (-result -Real)))))]
        ;; Tests for various literals that Racket treats as contracts. This
        ;; should be all of the cases covered by coerce-contract/f in guts. list?
        ;; and pair?  are special-cased in guts, yet they're handled in TR by the
