@@ -64,13 +64,15 @@
   [non-empty-listof (-poly (a b) (-> (-Con a b) (-Con (-lst a) (-pair b (-lst b)))))]
   [list*of (-poly (a b) (-> (-Con a b) (-Con (-mu x (-pair a (Un a x)))
                                              (-mu x (-pair b (Un b x))))))]
-  [cons/c (-poly (a b c d) (-> (-Con a b) (-Con c d) (-Con (-pair a c)
-                                                           (-pair b d))))]
+  [cons/c (-poly (a b c d) (-> (-Con a b) (-Con c d) (-Con Univ (-pair b d))))]
   ;; cons/dc
   [syntax/c (-poly (a b) (-> (-FlatCon a b) (-FlatCon (-Syntax a) (-Syntax b))))]
   ;; struct/c
   ;; struct/dc
-  ;; parameter/c
+  [parameter/c (-poly (a b c d) (cl->*
+                                 (-> (-Con a b) (-Con (-Param b) (-Param b)))
+                                 (-> (-Con a b) (-Con c d) (-Con (-Param b d)
+                                                                 (-Param b d)))))]
   ;; procedure-arity-includes/c
   ;; hash/c
   ;; hash/dc

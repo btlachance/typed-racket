@@ -600,6 +600,10 @@
           ;; not aware of the subtyping relation?
           (Con*: T-pre T-post))
          (% cset-meet (cg T-pre S-pre) (cg S-post T-post))]
+        [((Function: (list (arr: (list S-pre) _ _ _ _)))
+          (Con*: T-pre T-post))
+
+         (% cset-meet (cg T-pre S-pre) (cg S-pre T-post))]
 
         ;; two structs with the same name
         ;; just check pairwise on the fields

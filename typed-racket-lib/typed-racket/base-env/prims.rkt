@@ -944,10 +944,8 @@ the typed racket language.
              #:attr form #'[id id-ctc]))
   (syntax-parse stx
     [(_ p:id+ctc ...)
-     ;; TODO: I didn't think I would have to lift this, too; we have to when
-     ;; someone uses provide/contract directly and not via contract-out. I
-     ;; thought p/c as it's impl'd today allows forward references, yet for
-     ;; whatever reason how I'm using it here doesn't seem to work.
+     ;; TODO: Don't lift here -- provide/contract evaluates its expressions at
+     ;; the site of the form, it isn't lifted like contract-out is
      (syntax-local-lift-module-end-declaration
       (ignore #`(begin
                   #,@(attribute p.def)
@@ -961,7 +959,8 @@ the typed racket language.
    (lambda (stx modes)
      (syntax-parse stx
        [(_ [id ctc] ...)
-        ;; TODO: Not sure why I had to lift this, for similar reasons as above
+        ;; Since we implement this in terms of provide/contract, we have to lift
+        ;; this to allow forward references
         (syntax-local-lift-module-end-declaration
          #'(provide/contract [id ctc] ...))
         #'(combine-out)]))))
