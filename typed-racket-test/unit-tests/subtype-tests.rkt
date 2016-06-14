@@ -720,16 +720,16 @@
    [FAIL (-refine/fresh x -Int (-leq (-lexp x) (-lexp -1))) -Nat]
 
    [(-FlatCon -Real -Real) (-Con -Real -Real)]
-   [(-> Univ -Boolean : (-FS (-filter -Integer 0) -top))
+   [(-> Univ -Boolean : (-PS (-is-type 0 -Integer) -tt))
     (-FlatCon Univ -Integer)]
    [(-> -Real -Boolean)
     (-FlatCon -Real -Real)]
-   [(-> -Real -Boolean : (-FS (-filter -PosReal 0) -top))
+   [(-> -Real -Boolean : (-PS (-is-type 0 -PosReal) -tt))
     (-FlatCon -Real -PosReal)]
    [FAIL
-    (-> Univ -Boolean : (-FS (-filter -Real 0) -top))
+    (-> Univ -Boolean : (-PS (-is-type 0 -Real) -tt))
     (-FlatCon Univ -Integer)]
-   [(-> Univ -Boolean : (-FS (-filter -Integer 0) -top))
+   [(-> Univ -Boolean : (-PS (-is-type 0 -Integer) -tt))
     (-FlatCon Univ -Real)]
    [(-> -String (Un -Boolean -Number)) (-FlatCon -String -String)]
    ))

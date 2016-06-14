@@ -1,7 +1,7 @@
 #lang racket
 (require
  "utils.rkt"
- (rep type-rep filter-rep))
+ (rep type-rep prop-rep))
 (provide
  (struct-out dom-info)
  (struct-out post-info)
@@ -78,7 +78,7 @@
   (match ty
     [(Function: (list (arr:
                        (list in-ty)
-                       (Values: (list (Result: _ (FilterSet: (TypeFilter: out-ty _) _) _)))
+                       (Values: (list (Result: _ (PropSet: (TypeProp: _ out-ty) _) _)))
                        _ _ _)))
      (list in-ty out-ty)]
     [(Function: (list (arr: (list in-ty) _ _ _ _)))

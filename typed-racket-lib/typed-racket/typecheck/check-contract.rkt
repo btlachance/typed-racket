@@ -14,7 +14,7 @@
          (only-in (infer infer)
                   meet join)
          (utils tc-utils contract-utils)
-         (rep type-rep filter-rep)
+         (rep type-rep prop-rep)
          (private syntax-properties)
          "signatures.rkt"
          (for-syntax racket/base))
@@ -342,12 +342,12 @@
           [(Listof: ty) ty]))
       (values
        (make-arr* (map (compose Con*-out-ty dom-ty) doms)
-                  (make-Values (map (λ (ty) (-result ty -top-filter -empty-obj)) rng-in-tys))
+                  (make-Values (map (λ (ty) (-result ty -tt-propset -empty-obj)) rng-in-tys))
                   #:rest (and rest-ctc-ty/#f
                               (list-contents-ty (Con*-out-ty rest-ctc-ty/#f)))
                   #:kws (map (kw-in/out Con*-out-ty) sorted-kw-doms))
        (make-arr* (map (compose Con*-in-ty dom-ty) doms)
-                  (make-Values (map (λ (ty) (-result ty -top-filter -empty-obj)) rng-out-tys))
+                  (make-Values (map (λ (ty) (-result ty -tt-propset -empty-obj)) rng-out-tys))
                   #:rest (and rest-ctc-ty/#f
                               (list-contents-ty (Con*-in-ty rest-ctc-ty/#f)))
                   #:kws (map (kw-in/out Con*-in-ty) sorted-kw-doms)))))
