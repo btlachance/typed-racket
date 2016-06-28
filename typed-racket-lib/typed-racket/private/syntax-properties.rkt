@@ -85,7 +85,6 @@
   (tr:unit:compound tr:unit:compound)
   (tr:unit:from-context tr:unit:from-context #:mark)
   (unsafe-provide unsafe-provide #:mark)
-  (ctc:check-contract-for ctc:check-contract)
   (ctc:arrow ctc:arrow #:mark)
   (ctc:arrow-dom ctc:arrow-dom) ;; contains the position in the domain list
   (ctc:arrow-rng ctc:arrow-rng #:mark)

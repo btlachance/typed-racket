@@ -35,7 +35,8 @@
    [cond-contracted tc-arrow-i-contract (syntax? . -> . full-tc-results/c)]
    [cond-contracted tc-and/c (syntax? . -> . full-tc-results/c)]
    [cond-contracted tc-or/c (syntax? . -> . full-tc-results/c)]
-   [cond-contracted tc-list/c (syntax? . -> . full-tc-results/c)]))
+   [cond-contracted tc-list/c (syntax? . -> . full-tc-results/c)]
+   [cond-contracted coerce-to-con (Type/c . -> . Type/c)]))
 
 (define-signature tc-if^
   ([cond-contracted tc/if-twoarm ((syntax? syntax? syntax?) ((or/c tc-results/c #f)) . ->* . full-tc-results/c)]))

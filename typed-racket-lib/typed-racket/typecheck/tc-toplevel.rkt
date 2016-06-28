@@ -10,12 +10,13 @@
          (env global-env init-envs type-name-env type-alias-env
               lexical-env env-req mvar-env scoped-tvar-env
               type-alias-helper signature-env signature-helper)
-         (utils tc-utils redirect-contract)
+         (utils tc-utils redirect-contract contract-utils)
          "provide-handling.rkt" "def-binding.rkt" "tc-structs.rkt"
          "typechecker.rkt" "internal-forms.rkt"
          (typecheck provide-handling def-binding tc-structs
                     typechecker internal-forms 
                     check-below)
+         (only-in (r:infer infer) pairwise-intersect)
          syntax/location
          racket/format
          (for-template
@@ -207,15 +208,19 @@
        #:when (not (syntax-property form 'provide/contract-original-contract))
        (list)]
 
+      ;; this is the contract that gets lifted out by p/c
+      [(~and _:ignore^ (define-values (ctc-id)
+                         (let-values (((f) (_ _ _ ctc))) . _)))
+       #:when (syntax-property form 'provide/contract-original-contract)
+       (define ty (tc-expr/t #'ctc))
+       (register-type #'ctc-id ty)
+       (list (make-def-binding #'ctc-id ty))]
+
       [(~and _:ignore^ (define-values (v ...) . rest))
        ;; p/c puts this property on more than the transformer, but we ignore the
        ;; rest
        #:when (syntax-property form 'provide/contract-original-contract)
        (list)]
-
-      [(define-syntaxes (p/c-for-id) (_ _ _ _ (_ id) . _))
-       #:when (syntax-property form 'provide/contract-original-contract)
-       (list (make-def-binding #'p/c-for-id (lookup-type/lexical #'id)))]
 
       ;; definitions lifted from contracts should be ignored
       [(define-values (lifted ...) expr)
@@ -285,17 +290,15 @@
        (register-ignored! #'dviu)
        'no-type]
 
-      ;; TODO: move this into pass1.5? pass2 is apparently supposed to be for
-      ;; toplevel expressions
-      [(define-values (ctc-id) ctc)
-       #:when (ctc:check-contract-for-property form)
-       ;; TODO: if this id is a binding that was require/typed, then this fails.
-       ;; require/typed replaces usages of the id the user wrote with a binding
-       ;; that is a rename-transformer pointing at the contracted version of
-       ;; the id the user wrote
-       (define id (ctc:check-contract-for-property form))
-       ;; TODO: check-contract calls tc-expr, but we shouldn't typecheck twice
-       (check-contract id #'ctc)
+      ;; this is the p/c-transformer that gets rename-out and provided
+      [(define-syntaxes (p/c-for-id) (_ _ _ (_ ctc-id) (_ id) . _))
+       #:when (syntax-property form 'provide/contract-original-contract)
+       (define ctc-ty (coerce-to-con (lookup-type/lexical #'ctc-id)))
+       (define protected-id-ty (lookup-type/lexical #'id))
+       (check-below protected-id-ty (Con*-in-ty ctc-ty))
+       (register-type
+        #'p/c-for-id
+        (pairwise-intersect protected-id-ty (Con*-out-ty ctc-ty)))
        'no-type]
 
       ;; these forms we have been instructed to ignore

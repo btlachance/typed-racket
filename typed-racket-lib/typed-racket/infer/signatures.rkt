@@ -24,7 +24,8 @@
 
 (define-signature intersect^
   ([cond-contracted intersect ((Type? Type?) (OptObject?) . ->* . Type?)]
-   [cond-contracted restrict  ((Type? Type?) (OptObject?) . ->* . Type?)]))
+   [cond-contracted restrict  ((Type? Type?) (OptObject?) . ->* . Type?)]
+   [cond-contracted pairwise-intersect (Type? Type? . -> . Type?)]))
 
 (define-signature infer^
   ([cond-contracted infer ((;; variables from the forall

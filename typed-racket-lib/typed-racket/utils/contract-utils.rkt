@@ -82,7 +82,7 @@
                        _ _ _)))
      (list in-ty out-ty)]
     [(Function: (list (arr: (list in-ty) _ _ _ _)))
-     ;; when there isn't a TypeFilter
+     ;; when there isn't a TypeProp
      (list in-ty in-ty)]
     [_ #f]))
 (define-match-expander ConFn*:

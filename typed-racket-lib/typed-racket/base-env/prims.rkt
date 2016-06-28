@@ -934,33 +934,26 @@ the typed racket language.
   (base-for/flvector: for*: ExtFlonum extflvector make-extflvector unsafe-extflvector-ref
                       unsafe-extflvector-set! extflvector-copy e ...))
 
+(begin-for-syntax
+  (define-syntax-class p/c-item
+    #:datum-literals (rename)
+    (pattern [id ctc])
+    (pattern [rename orig-id id ctc])))
 (define-syntax (provide/contract stx)
-  (define-syntax-class id+ctc
-    (pattern [id ctc]
-             #:with id-ctc (format-id stx "~a-ctc" #'id)
-             #:attr def (ctc:check-contract-for-property
-                         #'(define id-ctc ctc)
-                         #'id)
-             #:attr form #'[id id-ctc]))
   (syntax-parse stx
-    [(_ p:id+ctc ...)
+    [(_ p:p/c-item ...)
      ;; TODO: Don't lift here -- provide/contract evaluates its expressions at
      ;; the site of the form, it isn't lifted like contract-out is
      (syntax-local-lift-module-end-declaration
-      (ignore #`(begin
-                  #,@(attribute p.def)
-                  ;; use racket's provide/contract because its contract-out
-                  ;; doesn't leave the provide/contract-original-contract prop
-                  ;; on the transformer binding
-                  (untyped:provide/contract #,@(attribute p.form)))))
+      (ignore #'(untyped:provide/contract p ...)))
      #'(void)]))
 (define-syntax contract-out
   (make-provide-pre-transformer
    (lambda (stx modes)
      (syntax-parse stx
-       [(_ [id ctc] ...)
+       [(_ p:p/c-item ...)
         ;; Since we implement this in terms of provide/contract, we have to lift
         ;; this to allow forward references
         (syntax-local-lift-module-end-declaration
-         #'(provide/contract [id ctc] ...))
+         #'(provide/contract p ...))
         #'(combine-out)]))))

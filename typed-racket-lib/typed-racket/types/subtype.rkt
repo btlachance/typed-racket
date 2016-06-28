@@ -794,9 +794,16 @@
   ;; XXX Not sure if these are correct using the new rep-switch style
   ;; For example, do all cases need the continue<: ? What's the first
   ;; thing in case: used for---is it just a label?
-  [(case: ConFn (ConFn*: t1-pre t1-post))
+  [(case: ConFnFlat (ConFn*: t1-pre t1-post))
    (match t2
      [(FlatCon: t2-pre t2-post)
+      (subtype-seq A
+                   (subtype* A t2-pre t1-pre obj)
+                   (subtype* A t1-post t2-post obj))]
+     [_ (continue<: A t1 t2 obj)])]
+  [(case: ConFnCon (ConFn*: t1-pre t1-post))
+   (match t2
+     [(Con: t2-pre t2-post)
       (subtype-seq A
                    (subtype* A t2-pre t1-pre obj)
                    (subtype* A t1-post t2-post obj))]
