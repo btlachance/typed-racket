@@ -942,11 +942,7 @@ the typed racket language.
 (define-syntax (provide/contract stx)
   (syntax-parse stx
     [(_ p:p/c-item ...)
-     ;; TODO: Don't lift here -- provide/contract evaluates its expressions at
-     ;; the site of the form, it isn't lifted like contract-out is
-     (syntax-local-lift-module-end-declaration
-      (ignore #'(untyped:provide/contract p ...)))
-     #'(void)]))
+     (ignore #'(untyped:provide/contract p ...))]))
 (define-syntax contract-out
   (make-provide-pre-transformer
    (lambda (stx modes)
