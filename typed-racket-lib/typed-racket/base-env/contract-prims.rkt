@@ -24,7 +24,8 @@
      #'(begin
          (define-syntax ctc
            (make-variable-like-transformer
-            (assume-type-property #'untyped-ctc ty))) ...)]))
+            #`(#,(ignore-some-expr-property #'#%expression ty)
+               untyped-ctc))) ...)]))
 
 (define-contract
   [flat-named-contract (-poly (a b) (-> Univ (-FlatCon a b) (-FlatCon a b)))]

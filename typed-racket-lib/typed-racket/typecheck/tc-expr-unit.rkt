@@ -144,8 +144,6 @@
       (int-err "bad form input to tc-expr: ~a" form))
     (syntax-parse form
       #:literal-sets (kernel-literals tc-expr-literals)
-      [:assume-type^
-       (ret (assume-type-property form))]
       [:ctc:arrow^
        (tc-arrow-contract form)]
       [:ctc:arrow-i^
