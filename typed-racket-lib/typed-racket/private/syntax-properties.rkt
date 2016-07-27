@@ -53,7 +53,6 @@
   (contract-def typechecker:contract-def) ; -> Contract-Def (struct in type-contract.rkt)
   (contract-def/provide typechecker:contract-def/provide)
   (assume-type typechecker:assume-type)
-  (user-contract typechecker:user-contract)
   (external-check typechecker:external-check)
   (casted-expr typechecker:casted-expr) ; Type -> Void, takes the original type of the casted expr
   (with-type typechecker:with-type #:mark)
@@ -106,4 +105,3 @@
   (ctc:list/c ctc:list/c #:mark)
   ;; contains the index of the sub-contract in its containing contract
   (ctc:list/c-sub ctc:list/c-sub))
-
