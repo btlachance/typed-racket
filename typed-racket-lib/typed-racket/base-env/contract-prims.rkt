@@ -267,6 +267,8 @@
           (~optional rest:dependent-rest)
           (~optional (~seq pre:pre-condition ...))
           rng:dependent-range
+          ;; TODO: post-conditions are only allowed when dependent-range is
+          ;; non-any
           (~optional (~seq post:post-condition ...)))
      (ctc:arrow-i
       (ignore

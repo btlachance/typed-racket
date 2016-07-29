@@ -4690,6 +4690,10 @@
        [tc-e (listof real?)
              (-Con (make-Listof Univ) (make-Listof -Real))]
        [tc-err (syntax/c (->/c any/c any/c))]
+       [tc-e (and/c (->/c exact-integer? exact-integer?)
+                    (->/c zero? zero?))
+             (-Con (t:-> -Integer Univ)
+                   (t:-> -Number -Zero))]
        )
 
   (test-suite

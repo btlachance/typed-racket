@@ -11,8 +11,7 @@
          (typecheck check-below)
          (env global-env type-alias-helper type-env-structs lexical-env)
          (types subtype abbrev tc-result match-expanders union numeric-tower)
-         (only-in (infer infer)
-                  meet join)
+         (only-in (infer infer) meet join pairwise-intersect)
          (utils tc-utils contract-utils)
          (rep type-rep prop-rep)
          (private syntax-properties)
@@ -115,7 +114,6 @@
 ;; Returns a permutation of ctcs in topo-order, according to their dependencies
 (define (topo-sort-ctcs ctcs ctc->id ctc->deps)
   (define dep-map (for/list ([ctc ctcs])
-                    ;; TODO: what if the id was #f, maybe gensym an id here?
                     (define surface-id (ctc->id ctc))
                     (define deps (or (ctc->deps ctc) (list)))
                     (cons surface-id deps)))
@@ -188,6 +186,11 @@
     (partition
      dom?
      (topo-sort-ctcs (if rest-ctc/#f
+                         ;; Typechecking #:rest arguments is similar enough to
+                         ;; typechecking other domain arguments that we can
+                         ;; typecheck them both uniformly. We simply cons it to
+                         ;; the other contracts because topo-sort-ctcs doesn't
+                         ;; care about the order of its input.
                          (cons (rest-ctc->dom-ctc rest-ctc/#f) ctcs)
                          ctcs)
                      dom/rng-ctc->id
@@ -209,14 +212,12 @@
                  [expanded-id (in-syntax expanded-deps)])
         (extend env expanded-id (Con*-out-ty (lookup env surface-id lookup-fail)))))
     (with-lexical-env deps-env
-      (printf "deps-env: ~a\n" (pretty-format deps-env))
       (coerce-to-con (tc-expr/t expanded-ctc))))
 
   (define doms-checked-env
     (for/fold ([env (lexical-env)])
               ([ctc topo-sorted-dom-ctcs])
       (define ctc-ty (check-subcontract ctc dom-ctc->deps env))
-      ;; TODO: what if dom-ctc->id contains #f (dom-info-id can be #f)
       (extend env (dom-ctc->id ctc) ctc-ty)))
 
   ;; We check the type of the #:rest contract after building up the checked-env
@@ -241,7 +242,7 @@
     ;; TODO: remove this hack. We want the above error to be delayed but need
     ;; the pattern match for make-arr* below to not blow up / signal a duplicate
     ;; error.
-    (set! rest-ctc-ty/#f (-Con (make-Listof (Un)) (make-Listof Univ)))
+    (set! rest-ctc-ty/#f (-Con (make-Listof Univ) (make-Listof (Un))))
     (tc-error/fields
      "#:rest contract must be a list contract"
      #:delayed? #t
@@ -262,10 +263,10 @@
                  [expanded-id (in-syntax expanded-deps)])
         (extend env expanded-id (Con*-out-ty (lookup env surface-id lookup-fail)))))
     (with-lexical-env deps-env
-      (check-below (tc-expr/t expanded-expr)
-                   (if (expr->desc? expr)
-                       (Un -Boolean -String (-lst -String))
-                       Univ))))
+      (tc-expr/check expanded-expr (ret
+                                    (if (expr->desc? expr)
+                                        (Un -Boolean -String (-lst -String))
+                                        Univ)))))
     
   (define is-pre? ctc:arrow-i-pre-property)
   (define (pre-dont-recur? form)
@@ -298,7 +299,6 @@
       ;; can't look its type up in rng-checked-env because it has no id
       (define ctc-ty (check-subcontract ctc rng-ctc->deps rng-checked-env))
       (values (Con*-in-ty ctc-ty) (Con*-out-ty ctc-ty))))
-  ;(check-below rng-ctc-ty (-Con (Un) Univ))
 
   (define is-post? ctc:arrow-i-post-property)
   (define (post-dont-recur? form)
@@ -329,7 +329,6 @@
       (define opts (take opt-plain-doms vararg-slice-length))
       (define doms (append reqd-plain-doms opts))
       (define lookup-fail (mk/lookup-fail "doms-checked-env"))
-      ;; TODO: dom-ty should be able to look up the type in doms-checked-env
       (define (dom-ty d) (lookup doms-checked-env (dom-info-id d) lookup-fail))
       (define ((kw-in/out Con*in/out-ty) kw-info)
         (define kw (dom-info-type kw-info))
@@ -393,7 +392,7 @@
              #:delayed? #f
              "previous output type" out-ty
              "next input type" next-in-ty))
-          (values in-ty (meet out-ty (Con*-out-ty ty))))))
+          (values in-ty (pairwise-intersect out-ty (Con*-out-ty ty))))))
   (ret (-Con in-ty out-ty)))
 
 ;; tc-or/c : syntax -> (Con t)
@@ -450,18 +449,7 @@
     ;; they need to be handled differently than coercible-simple-value-types
     [(== -Regexp) (-FlatCon Univ -String)]
     [(== -Byte-Regexp) (-FlatCon Univ -Bytes)]
-    ;; TODO: replace this with an error
     [_ (tc-error/fields "could not coerce to a contract type"
                         #:delayed? #t
                         "type" ty)
        (-Con (Un) Univ)]])
-
-;; check-contract : identifier syntax -> [void]
-(define (check-contract defn-id ctc)
-  (match-define (Con*: in-ty _) (coerce-to-con (tc-expr/t ctc)))
-  (unless (subtype (lookup-type defn-id) in-ty)
-    (tc-error/fields "contract is incompatible with type"
-                     #:delayed? #t
-                     "id" (syntax->datum defn-id)
-                     "type" (lookup-type defn-id)
-                     "contract type" (coerce-to-con (tc-expr/t ctc)))))
