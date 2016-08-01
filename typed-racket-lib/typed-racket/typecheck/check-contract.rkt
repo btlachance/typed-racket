@@ -127,7 +127,7 @@
   (for/list ([id topo-sorted-ids])
     (findf (ctc-matcher-for-id id) ctcs)))
 
-(define ((mk/lookup-fail name) id)
+(define ((mk/lookup-fail-in name) id)
   (int-err (format "couldn't find ~a in ~a" id name)))
 
 (define (tc-arrow-i-contract form)
@@ -144,9 +144,9 @@
      equal?
      #:key (lambda (ctc) (dom-info-type (ctc:arrow-i-dom-property ctc)))))
   (define rest-ctc/#f
-    (ormap
-     (λ (x) x)
-     (trawl-for-doms/rng form ctc:arrow-i-rest-property is-arrow-i?)))
+    (match (trawl-for-doms/rng form ctc:arrow-i-rest-property is-arrow-i?)
+      [(list rest-ctc) rest-ctc]
+      [_ #f]))
 
   (define dom-ctc->id (compose dom-info-id ctc:arrow-i-dom-property))
   (define dom-ctc->deps (compose dom-info-deps ctc:arrow-i-dom-property))
@@ -205,7 +205,7 @@
       (syntax-parse ctc
         [(_ deps ... ctc)
          (values #'(deps ...) #'ctc)]))
-    (define lookup-fail (mk/lookup-fail "deps-env"))
+    (define lookup-fail (mk/lookup-fail-in "deps-env"))
     (define deps-env
       (for/fold ([env env])
                 ([surface-id surface-deps]
@@ -220,33 +220,20 @@
       (define ctc-ty (check-subcontract ctc dom-ctc->deps env))
       (extend env (dom-ctc->id ctc) ctc-ty)))
 
-  ;; We check the type of the #:rest contract after building up the checked-env
-  ;; because it would be complicated to check that it's a list contract in the
-  ;; middle of checking the rest of the contracts.
   (define rest-ctc-ty/#f
-    (and rest-ctc/#f
-         (let ([surface-id (rest-info-id (ctc:arrow-i-rest-property rest-ctc/#f))])
-           (lookup doms-checked-env surface-id (mk/lookup-fail "doms-checked-env")))))
-  (define (list-ctc-ty? ty)
-    (match (coerce-to-con ty)
-      ;; TODO: Figure out why the more natural version of this match causes a
-      ;; "unbound identifier in module" bug that I can't really track down
-      ;;[(Con*: (Listof: _) (Listof: _)) #t]
-      [(Con*: in out)
-       (match* (in out)
-         [((Listof: _) (Listof: _)) #t]
-         [(_ _) #f])]
-      [_ #f]))
-  (when (and rest-ctc-ty/#f (not (list-ctc-ty? rest-ctc-ty/#f)))
-    (define ty rest-ctc-ty/#f)
-    ;; TODO: remove this hack. We want the above error to be delayed but need
-    ;; the pattern match for make-arr* below to not blow up / signal a duplicate
-    ;; error.
-    (set! rest-ctc-ty/#f (-Con (make-Listof Univ) (make-Listof (Un))))
-    (tc-error/fields
-     "#:rest contract must be a list contract"
-     #:delayed? #t
-     "#:rest contract type" ty))
+    (match (and rest-ctc/#f
+                (lookup
+                 doms-checked-env
+                 (rest-info-id (ctc:arrow-i-rest-property rest-ctc/#f))
+                 (mk/lookup-fail-in "doms-checked-env")))
+      [#f #f]
+      [(and t (Con*: (Listof: _) (Listof: _))) t]
+      [non-list-ty
+       (tc-error/fields
+        "#:rest contract must be a list contract"
+        #:delayed? #t
+        "#:rest contract type" non-list-ty)
+       (-Con (make-Listof Univ) (make-Listof (Un)))]))
 
   ;; if we didn't care about the order of error messages, we could check all
   ;; of the conditions using rng-checked-env
@@ -255,7 +242,7 @@
       (syntax-parse expr
         [(_ () deps ... expr)
          (values #'(deps ...) #'expr)]))
-    (define lookup-fail (mk/lookup-fail "pre/post deps-env"))
+    (define lookup-fail (mk/lookup-fail-in "pre/post deps-env"))
     (define surface-deps (or (expr->deps expr) (list)))
     (define deps-env
       (for/fold ([env env])
@@ -291,7 +278,7 @@
   (define-values (rng-in-tys rng-out-tys)
     (for/lists (in-tys out-tys)
                ([ctc rng-ctcs])
-      (define lookup-fail (mk/lookup-fail "rng-checked-env"))
+      (define lookup-fail (mk/lookup-fail-in "rng-checked-env"))
       ;; TODO: we're calling check-subcontract twice by calling it here, but I'm
       ;; not sure of another way to handle the two cases: a) when the ctc has
       ;; deps, rng-checked-env doesn't contain entries for its expanded deps
@@ -328,7 +315,7 @@
                ([vararg-slice-length (in-range (add1 opt-count))])
       (define opts (take opt-plain-doms vararg-slice-length))
       (define doms (append reqd-plain-doms opts))
-      (define lookup-fail (mk/lookup-fail "doms-checked-env"))
+      (define lookup-fail (mk/lookup-fail-in "doms-checked-env"))
       (define (dom-ty d) (lookup doms-checked-env (dom-info-id d) lookup-fail))
       (define ((kw-in/out Con*in/out-ty) kw-info)
         (define kw (dom-info-type kw-info))

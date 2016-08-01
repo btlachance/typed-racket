@@ -4600,6 +4600,11 @@
                                    (=/c (apply + xs)))])
              (-Con (->* (list) -Real Univ)
                    (->* (list) Univ -Real))]
+       [tc-e (->i ()
+                  #:rest [xs (lambda: ([x : (Listof Integer)]) #t)]
+                  [result any/c])
+             (-Con (->* (list) -Integer Univ)
+                   (->* (list) -Integer Univ))]
        [tc-err (let ()
                  (->i ()
                     #:rest [xs number?]
