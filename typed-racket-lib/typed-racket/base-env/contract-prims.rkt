@@ -96,36 +96,42 @@
     #:literals (and/c)
     [(and/c ctc:expr ...)
      (ctc:and/c
-      #`(untyped:and/c #,@(for/list ([ctc (in-syntax #'(ctc ...))]
+      (quasisyntax/loc stx
+        (untyped:and/c #,@(for/list ([ctc (in-syntax #'(ctc ...))]
                                      [idx (in-naturals)])
-                            (ctc:and/c-sub-property ctc idx))))]))
+                            (ctc:and/c-sub-property ctc idx)))))]))
 
 (define-syntax (or/c stx)
   (syntax-parse stx
     #:literals (or/c)
     [(or/c ctc:expr ...)
      (ctc:or/c
-      #`(untyped:or/c #,@(for/list ([ctc (in-syntax #'(ctc ...))]
+      (quasisyntax/loc stx
+        (untyped:or/c #,@(for/list ([ctc (in-syntax #'(ctc ...))]
                                     [idx (in-naturals)])
-                           (ctc:or/c-sub-property ctc idx))))]))
+                           (ctc:or/c-sub-property ctc idx)))))]))
 
 (define-syntax (list/c stx)
   (syntax-parse stx
     #:literals (list/c)
     [(list/c ctc:expr ...)
      (ctc:list/c
-      #`(untyped:list/c #,@(for/list ([ctc (in-syntax #'(ctc ...))]
+      (quasisyntax/loc stx
+        (untyped:list/c #,@(for/list ([ctc (in-syntax #'(ctc ...))]
                                       [idx (in-naturals)])
-                             (ctc:list/c-sub-property ctc idx))))]))
+                             (ctc:list/c-sub-property ctc idx)))))]))
 
 (define-syntax (->/c stx)
   (syntax-parse stx
     #:literals (->/c)
     [(->/c doms:expr ... rng:expr)
-     (ctc:arrow (ignore #`(untyped:-> #,@(for/list ([dom (in-syntax #'(doms ...))]
-                                                    [idx (in-naturals)])
-                                           (ctc:arrow-dom-property dom idx))
-                                      #,(ctc:arrow-rng #'rng))))]))
+     (ctc:arrow
+      (ignore
+       (quasisyntax/loc stx
+         (untyped:-> #,@(for/list ([dom (in-syntax #'(doms ...))]
+                                   [idx (in-naturals)])
+                          (ctc:arrow-dom-property dom idx))
+                     #,(ctc:arrow-rng #'rng)))))]))
 
 (define-syntax (->i stx)
   (define-syntax-class id+ctc
@@ -272,7 +278,8 @@
           (~optional (~seq post:post-condition ...)))
      (ctc:arrow-i
       (ignore
-       #`(untyped:->i (#,@(apply append (map syntax->list (or (attribute mand-doms.form)
+       (quasisyntax/loc stx
+         (untyped:->i (#,@(apply append (map syntax->list (or (attribute mand-doms.form)
                                                               (list)))))
                       (#,@(apply append (map syntax->list (or (attribute opt-doms.form)
                                                               (list)))))
@@ -294,5 +301,5 @@
                       rng.form
                       #,@(if (attribute post)
                              (flatten (attribute post.forms))
-                             (list)))))]))
+                             (list))))))]))
 
