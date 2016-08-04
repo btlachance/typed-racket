@@ -5,7 +5,7 @@
          racket/list racket/match racket/sequence
          (prefix-in c: (contract-req))
          (rep core-rep type-rep values-rep)
-         (types utils abbrev type-table struct-table resolve)
+         (types utils abbrev type-table struct-table resolve pairwise-intersect)
          (private parse-type type-annotation syntax-properties type-contract)
          (env global-env init-envs type-name-env type-alias-env
               lexical-env env-req mvar-env scoped-tvar-env
@@ -16,7 +16,6 @@
          (typecheck provide-handling def-binding tc-structs
                     typechecker internal-forms 
                     check-below)
-         (only-in (r:infer infer) pairwise-intersect)
          syntax/location
          racket/format
          (for-template

@@ -10,8 +10,9 @@
          "../utils/utils.rkt"
          (typecheck check-below)
          (env global-env type-alias-helper type-env-structs lexical-env)
-         (types subtype abbrev tc-result match-expanders union numeric-tower)
-         (only-in (infer infer) meet join pairwise-intersect)
+         (types subtype abbrev tc-result match-expanders union numeric-tower
+                pairwise-intersect)
+         (only-in (infer infer) meet join)
          (utils tc-utils contract-utils)
          (rep type-rep prop-rep)
          (private syntax-properties)
@@ -396,9 +397,6 @@
               ([sub (in-list subs)])
       (define con-ty (coerce-to-con (tc-expr/t sub)))
       (values
-       ;; XXX: simply taking the meet might not work for higher-order contracts,
-       ;; even if it did turn arrows into a case->. so, there may need to be
-       ;; some extra work to support higher-order contracts in or/c
        (meet in-ty (Con*-in-ty con-ty))
        (join out-ty (Con*-out-ty con-ty)))))
   (ret (-Con in-ty out-ty)))
