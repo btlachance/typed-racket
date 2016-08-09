@@ -1,7 +1,7 @@
 #lang racket
 (require "../utils/utils.rkt"
          (rep type-rep prop-rep)
-         (types abbrev subtype)
+         (types subtype)
          (only-in (infer infer) intersect)
          racket/match)
 

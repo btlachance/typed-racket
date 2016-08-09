@@ -1,23 +1,17 @@
 #lang racket/unit
 (require racket/match
-         racket/dict
          racket/list
-         racket/pretty
          racket/sequence
-         racket/function
-         syntax/id-table
          syntax/parse
          "../utils/utils.rkt"
-         (typecheck check-below)
-         (env global-env type-alias-helper type-env-structs lexical-env)
+         (env type-alias-helper type-env-structs lexical-env)
          (types subtype abbrev tc-result match-expanders union numeric-tower
                 pairwise-intersect)
          (only-in (infer infer) meet join)
          (utils tc-utils contract-utils)
-         (rep type-rep prop-rep)
+         (rep type-rep)
          (private syntax-properties)
-         "signatures.rkt"
-         (for-syntax racket/base))
+         "signatures.rkt")
 
 (import tc-expr^)
 (export check-contract^)

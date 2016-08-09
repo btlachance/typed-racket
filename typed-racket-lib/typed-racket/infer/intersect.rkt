@@ -4,7 +4,6 @@
          (rep type-rep type-mask rep-utils)
          (types abbrev subtype resolve overlap)
          "signatures.rkt"
-         racket/match
          racket/set)
 
 (import infer^)

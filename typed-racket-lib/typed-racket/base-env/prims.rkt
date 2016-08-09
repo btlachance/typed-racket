@@ -116,7 +116,6 @@ the typed racket language.
          racket/flonum ; for for/flvector and for*/flvector
          racket/extflonum ; for for/extflvector and for*/extflvector
          (only-in racket/contract/base provide/contract contract-out)
-         racket/provide-syntax
          (only-in "../types/numeric-predicates.rkt" index?)
          (submod "../typecheck/internal-forms.rkt" forms)
          (submod "prims-contract.rkt" forms)

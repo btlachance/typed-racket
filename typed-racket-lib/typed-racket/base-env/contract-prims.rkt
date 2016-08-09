@@ -8,7 +8,6 @@
                      syntax/parse
                      syntax/transformer
                      (types abbrev numeric-tower union)
-                     (rep type-rep)
                      (utils contract-utils)
                      (private syntax-properties))
          (prefix-in untyped: racket/contract/base))
