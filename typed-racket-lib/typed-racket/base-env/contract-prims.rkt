@@ -89,8 +89,6 @@
   ;; flat-contract-predicate
   [symbols (->* (list) -Symbol (-Con Univ -Symbol))])
 
-;; and/c requires us to calculate an intersection, so we can't give it a type
-;; like the make-variable-... usages above
 (define-syntax (and/c stx)
   (syntax-parse stx
     #:literals (and/c)

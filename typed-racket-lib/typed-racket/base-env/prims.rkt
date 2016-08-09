@@ -44,6 +44,7 @@ the typed racket language.
          define-typed-struct/exec
          ann inst row-inst
          :
+         provide/contract contract-out
          (rename-out [define-typed-struct define-struct:]
                      [define-typed-struct define-struct]
                      [-struct struct]
@@ -114,7 +115,7 @@ the typed racket language.
          racket/unsafe/ops
          racket/flonum ; for for/flvector and for*/flvector
          racket/extflonum ; for for/extflvector and for*/extflvector
-         (prefix-in untyped: racket/contract/base)
+         (only-in racket/contract/base provide/contract contract-out)
          racket/provide-syntax
          (only-in "../types/numeric-predicates.rkt" index?)
          (submod "../typecheck/internal-forms.rkt" forms)
@@ -933,23 +934,3 @@ the typed racket language.
 (define-syntax-rule (for*/extflvector: e ...)
   (base-for/flvector: for*: ExtFlonum extflvector make-extflvector unsafe-extflvector-ref
                       unsafe-extflvector-set! extflvector-copy e ...))
-
-(begin-for-syntax
-  (define-syntax-class p/c-item
-    #:datum-literals (rename)
-    (pattern [id ctc])
-    (pattern [rename orig-id id ctc])))
-(define-syntax (provide/contract stx)
-  (syntax-parse stx
-    [(_ p:p/c-item ...)
-     (ignore #'(untyped:provide/contract p ...))]))
-(define-syntax contract-out
-  (make-provide-pre-transformer
-   (lambda (stx modes)
-     (syntax-parse stx
-       [(_ p:p/c-item ...)
-        ;; Since we implement this in terms of provide/contract, we have to lift
-        ;; this to allow forward references
-        (syntax-local-lift-module-end-declaration
-         #'(provide/contract p ...))
-        #'(combine-out)]))))

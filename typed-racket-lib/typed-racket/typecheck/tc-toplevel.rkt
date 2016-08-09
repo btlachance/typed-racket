@@ -140,8 +140,7 @@
 
       ;; definitions lifted from contracts should be ignored
       [(define-values (lifted ...) expr)
-       #:when (or (contract-lifted-property #'expr)
-                  (contract-lifted-property form))
+       #:when (contract-lifted-property #'expr)
        #:do [(register-ignored! #'expr)]
        (list)]
       
@@ -184,6 +183,10 @@
 
       ;; define-syntaxes just get noted
       [(define-syntaxes (var:id ...) . rest)
+       ;; XXX: is this ok? normally macros can't go to untyped contexts, but
+       ;; provide/contract and friends generate transformers for the contracted
+       ;; identifiers.
+       #:when (not (syntax-property form 'provide/contract-original-contract))
        (stx-map make-def-stx-binding #'(var ...))]
 
       ;; otherwise, do nothing in this pass
@@ -203,28 +206,11 @@
     (syntax-parse form
       #:literals (define-values begin)
       [(~or _:ignore^ _:ignore-some^)
-       ;; p/c-transformer bindings have this property
-       #:when (not (syntax-property form 'provide/contract-original-contract))
-       (list)]
-
-      ;; this is the contract that gets lifted out by p/c
-      [(~and _:ignore^ (define-values (ctc-id)
-                         (let-values (((f) (_ _ _ ctc))) . _)))
-       #:when (syntax-property form 'provide/contract-original-contract)
-       (define ty (tc-expr/t #'ctc))
-       (register-type #'ctc-id ty)
-       (list (make-def-binding #'ctc-id ty))]
-
-      [(~and _:ignore^ (define-values (v ...) . rest))
-       ;; p/c puts this property on more than the transformer, but we ignore the
-       ;; rest
-       #:when (syntax-property form 'provide/contract-original-contract)
        (list)]
 
       ;; definitions lifted from contracts should be ignored
       [(define-values (lifted ...) expr)
-       #:when (or (contract-lifted-property #'expr)
-                  (contract-lifted-property form))
+       #:when (contract-lifted-property #'expr)
        #:do [(register-ignored! #'expr)]
        (list)]
 
@@ -253,6 +239,22 @@
       ;; for the top-level, as for pass1
       [(begin . rest)
        (apply append (stx-map tc-toplevel/pass1.5 #'rest))]
+
+      ;; this is the p/c-transformer that gets rename-out and provided
+      [(define-syntaxes (p/c-for-id) (_ _ _ (_ ctc-id) (_ id) . _))
+       #:when (syntax-property form 'provide/contract-original-contract)
+       (define ctc-ty (coerce-to-con (lookup-type/lexical #'ctc-id)))
+       (define protected-id-ty (lookup-type/lexical #'id))
+       (check-below protected-id-ty (Con*-in-ty ctc-ty))
+
+       (define contracted-ty
+         (pairwise-intersect protected-id-ty (Con*-out-ty ctc-ty)))
+       (register-type #'p/c-for-id contracted-ty)
+       ;; XXX: we're cheating here and making a def-binding even though this is
+       ;; a macro. Why? We need the contracted identifier (the transformer) to
+       ;; be able to flow to untyped contexts. We want contracted identifiers
+       ;; to cross the typed/untyped boundary.
+       (list (make-def-binding #'p/c-for-id contracted-ty))]
 
       [_ (list)])))
 
@@ -289,19 +291,8 @@
        (register-ignored! #'dviu)
        'no-type]
 
-      ;; this is the p/c-transformer that gets rename-out and provided
-      [(define-syntaxes (p/c-for-id) (_ _ _ (_ ctc-id) (_ id) . _))
-       #:when (syntax-property form 'provide/contract-original-contract)
-       (define ctc-ty (coerce-to-con (lookup-type/lexical #'ctc-id)))
-       (define protected-id-ty (lookup-type/lexical #'id))
-       (check-below protected-id-ty (Con*-in-ty ctc-ty))
-       (register-type
-        #'p/c-for-id
-        (pairwise-intersect protected-id-ty (Con*-out-ty ctc-ty)))
-       'no-type]
-
       ;; these forms we have been instructed to ignore
-      [(~and stx:ignore^ (~not :ctc:arrow-i^))
+      [stx:ignore^
        'no-type]
 
       ;; this is a form that we mostly ignore, but we check some interior parts
@@ -319,8 +310,7 @@
 
       ;; definitions lifted from contracts should be ignored
       [(define-values (lifted ...) expr)
-       #:when (or (contract-lifted-property #'expr)
-                  (contract-lifted-property form))
+       #:when (contract-lifted-property #'expr)
        #:do [(register-ignored! #'expr)]
        'no-type]
 

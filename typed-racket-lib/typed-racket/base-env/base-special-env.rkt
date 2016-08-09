@@ -314,4 +314,14 @@
    (-> -ExtFlVector (-seq -ExtFlonum))]
   [(make-template-identifier 'make-namespace-anchor 'racket/private/namespace)
    (-> -Variable-Reference -Namespace-Anchor)]
+  [(make-template-identifier 'do-partial-app 'racket/contract/private/provide)
+   (-> Univ Univ Univ Univ Univ (-values (list Univ Univ)))]
+  [(make-template-identifier 'source-location-source 'syntax/srcloc)
+   (-> (-Syntax Univ) Univ)]
+  [(make-template-identifier 'coerce-contract 'racket/contract/private/guts)
+   ;; TODO: handle in tc-app-special and support more coercible cases
+   (-poly (a b) (cl-> [(-Symbol -Real) (-FlatCon Univ -Real)]
+                      [(-Symbol -String) (-FlatCon Univ -String)]
+                      [(-Symbol (-FlatCon a b)) (-FlatCon a b)]
+                      [(-Symbol (-Con a b)) (-Con a b)]))]
   )

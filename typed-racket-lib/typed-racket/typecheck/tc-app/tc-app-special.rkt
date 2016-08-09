@@ -63,7 +63,14 @@
   ;; (quote-module-name) originally.
   (pattern (op src path)
     #:declare op (id-from 'module-name-fixup 'syntax/location)
-    (ret Univ))
+    (begin
+      ;; Because we aren't typechecking src and path, they won't have entries in
+      ;; the type-table. Without ignoring these two, typechecking the expansion
+      ;; of provide/contract and contract-out ends up with the optimizer trying
+      ;; to type-of src and path... but they have no entry in the type-table!
+      (register-ignored! #'src)
+      (register-ignored! #'path)
+      (ret Univ)))
   ;; special case for `delay'
   (pattern (mp1 (#%plain-lambda ()
                   (#%plain-app mp2 (#%plain-app call-with-values (#%plain-lambda () e) list))))
