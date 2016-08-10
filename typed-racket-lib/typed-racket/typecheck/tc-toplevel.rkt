@@ -290,7 +290,6 @@
            (check-below lexical-type expected-type)))
        (register-ignored! #'dviu)
        'no-type]
-
       ;; these forms we have been instructed to ignore
       [stx:ignore^
        'no-type]

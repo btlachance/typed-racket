@@ -42,7 +42,6 @@
         (Un))))
 
 ;; join: Type Type -> Type
-
 ;; union the given types
 (define (join T U) (Un T U))
 

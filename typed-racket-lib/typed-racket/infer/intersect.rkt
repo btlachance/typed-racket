@@ -4,6 +4,7 @@
          (rep type-rep type-mask rep-utils)
          (types abbrev subtype resolve overlap)
          "signatures.rkt"
+         racket/match
          racket/set)
 
 (import infer^)
@@ -217,4 +218,3 @@
     [else (internal-restrict t1 t2 '() obj)]))
 
 (define internal-restrict (intersect-types #f))
-

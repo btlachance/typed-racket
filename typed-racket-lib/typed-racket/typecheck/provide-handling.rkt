@@ -4,6 +4,7 @@
          "renamer.rkt"
          racket/sequence syntax/id-table racket/syntax
          racket/struct-info racket/match syntax/parse
+         (only-in (private type-contract) include-extra-requires?)
          (private syntax-properties)
          (typecheck renamer def-binding)
          (utils tc-utils)
