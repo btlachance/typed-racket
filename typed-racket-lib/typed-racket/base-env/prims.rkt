@@ -44,7 +44,6 @@ the typed racket language.
          define-typed-struct/exec
          ann inst row-inst
          :
-         provide/contract contract-out
          (rename-out [define-typed-struct define-struct:]
                      [define-typed-struct define-struct]
                      [-struct struct]
@@ -115,7 +114,6 @@ the typed racket language.
          racket/unsafe/ops
          racket/flonum ; for for/flvector and for*/flvector
          racket/extflonum ; for for/extflvector and for*/extflvector
-         (only-in racket/contract/base provide/contract contract-out)
          (only-in "../types/numeric-predicates.rkt" index?)
          (submod "../typecheck/internal-forms.rkt" forms)
          (submod "prims-contract.rkt" forms)
@@ -123,7 +121,6 @@ the typed racket language.
          (for-label (only-in "base-types-extra.rkt" Values)
                     (only-in racket/base values))
          (for-syntax
-          racket/provide-transform
           racket/lazy-require
           syntax/parse/pre
           syntax/stx

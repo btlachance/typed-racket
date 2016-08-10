@@ -12,7 +12,9 @@
                      (private syntax-properties))
          (prefix-in untyped: racket/contract/base))
 (provide (except-out (all-defined-out)
-                     define-contract))
+                     define-contract)
+         (rename-out [untyped:provide/contract provide/contract]
+                     [untyped:contract-out contract-out]))
 
 (define-syntax (define-contract stx)
   (define-syntax-class def
