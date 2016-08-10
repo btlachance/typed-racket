@@ -31,9 +31,7 @@
   type-declaration
   typed-define-signature
   typed-define-values/invoke-unit
-  contract-definition
   typecheck-failure
-  check-contract-for
 
   type-alias?
   new-subtype-def?
@@ -67,9 +65,7 @@
                   :-internal
                   typecheck-fail-internal
                   define-signature-internal
-                  define-values/invoke-unit-internal
-                  ctc-definition-internal
-                  check-contract-for-internal))
+                  define-values/invoke-unit-internal))
 
 (require (submod "." forms) (submod "." forms literal-set))
 
@@ -177,11 +173,7 @@
   ;; when expressions are typechecked
   [typed-define-values/invoke-unit
    (define-values/invoke-unit-internal (import:dviu-import/export ...)
-                                       (export:dviu-import/export ...))]
-  [contract-definition
-   (ctc-definition-internal id:identifier ctc:expr)]
-  [check-contract-for
-   (check-contract-for-internal id:identifier ctc:expr)])
+                                       (export:dviu-import/export ...))])
 
 ;; Define separately outside of `define-internal-classes` since this form
 ;; is meant to appear in expression positions, so it doesn't make sense to use
