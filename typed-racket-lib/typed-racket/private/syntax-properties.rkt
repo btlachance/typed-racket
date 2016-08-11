@@ -83,10 +83,9 @@
   (tr:unit:compound tr:unit:compound)
   (tr:unit:from-context tr:unit:from-context #:mark)
   (unsafe-provide unsafe-provide #:mark)
-  (ctc:arrow ctc:arrow #:mark)
+  (tr:ctc tr:ctc) ;; symbol indicating which type rule to dispatch to
   (ctc:arrow-dom ctc:arrow-dom) ;; contains the position in the domain list
   (ctc:arrow-rng ctc:arrow-rng #:mark)
-  (ctc:arrow-i ctc:arrow-i #:mark)
   ;; TODO: since we're attaching the properties to the id, no need to store
   ;; the Name field in the dom and rng
   (ctc:arrow-i-dom ctc:arrow-i-dom) ;; (list Index Name Syntax (list Dep) Option<Keyword>)
@@ -97,10 +96,7 @@
   (ctc:arrow-i-rest ctc:arrow-i-rest)
   (ctc:arrow-i-pre ctc:arrow-i-pre)
   (ctc:arrow-i-post ctc:arrow-i-post)
-  (ctc:and/c ctc:and/c #:mark)
   (ctc:and/c-sub ctc:and/c-sub)
-  (ctc:or/c ctc:or/c #:mark)
   (ctc:or/c-sub ctc:or/c-sub)
-  (ctc:list/c ctc:list/c #:mark)
   ;; contains the index of the sub-contract in its containing contract
   (ctc:list/c-sub ctc:list/c-sub))

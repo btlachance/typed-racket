@@ -144,16 +144,8 @@
       (int-err "bad form input to tc-expr: ~a" form))
     (syntax-parse form
       #:literal-sets (kernel-literals tc-expr-literals)
-      [:ctc:arrow^
-       (tc-arrow-contract form)]
-      [:ctc:arrow-i^
-       (tc-arrow-i-contract form)]
-      [:ctc:and/c^
-       (tc-and/c form)]
-      [:ctc:or/c^
-       (tc-or/c form)]
-      [:ctc:list/c^
-       (tc-list/c form)]
+      [:tr:ctc^
+       (check-contract form)]
       ;; a TR-annotated class
       [stx:tr:class^
        (check-class form expected)]

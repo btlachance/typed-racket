@@ -1,6 +1,7 @@
 #lang racket/unit
 (require racket/match
          racket/list
+         racket/function
          racket/sequence
          syntax/parse
          "../utils/utils.rkt"
@@ -53,7 +54,7 @@
 
   (when (empty? arrow-subforms)
     (int-err "no subforms for given -> contract form ~a" form))
-  (define is-arrow? (syntax-parser [:ctc:arrow^ #t] [_ #f]))
+  (define (is-arrow? stx) (equal? (tr:ctc-property stx) '->))
   (define doms
     (append*
      (map
@@ -112,9 +113,6 @@
                     (define surface-id (ctc->id ctc))
                     (define deps (or (ctc->deps ctc) (list)))
                     (cons surface-id deps)))
-  ;; TODO: could find-strongly-connected-type-aliases ever not return something
-  ;; we want to just outright flatten? e.g. could we even get to this point if
-  ;; there was a cycle (or would ->i have already errored)?
   (define sorted-ids* (flatten (find-strongly-connected-type-aliases dep-map)))
   (define topo-sorted-ids (reverse sorted-ids*))
 
@@ -129,7 +127,8 @@
   (define arrow-subforms (or (syntax->list form) (list)))
   (when (empty? arrow-subforms)
     (int-err "no subforms for given ->i form ~a" form))
-  (define is-arrow-i? (syntax-parser [:ctc:arrow-i^ #t] [_ #f]))
+  (define (is-arrow-i? stx)
+    (equal? (tr:ctc-property stx) '->i))
   (define expanded-doms
     (remove-duplicates
      (append*
@@ -354,10 +353,13 @@
 
 ;; tc-and/c : syntax -> (Con t)
 (define (tc-and/c form)
-  (define subs (sort (trawl-for-subs (ctc:and/c-sub-property form #f)
-                                      (syntax-parser [:ctc:and/c^ #t]
-                                                     [_ #f])
-                                      ctc:and/c-sub-property)
+  (define subforms (or (syntax->list form) (list)))
+  (when (empty? subforms)
+    (int-err "no subforms for given and/c form ~a" form))
+  (define (is-and/c? stx) (equal? (tr:ctc-property stx) 'and/c))
+  (define subs (sort (trawl-for-subs subforms
+                                     is-and/c?
+                                     (conjoin syntax? ctc:and/c-sub-property))
                       <
                       #:key ctc:and/c-sub-property))
   (define subs-tys (map (compose coerce-to-con tc-expr/t) subs))
@@ -379,10 +381,13 @@
 
 ;; tc-or/c : syntax -> (Con t)
 (define (tc-or/c form)
-  (define subs (sort (trawl-for-subs (ctc:or/c-sub-property form #f)
-                                     (syntax-parser [:ctc:or/c^ #t]
-                                                    [_ #f])
-                                     ctc:or/c-sub-property)
+  (define subforms (or (syntax->list form) (list)))
+  (when (empty? subforms)
+    (int-err "no subforms for given or/c form ~a" form))
+  (define (is-or/c? stx) (equal? (tr:ctc-property stx) 'or/c))
+  (define subs (sort (trawl-for-subs subforms
+                                     is-or/c?
+                                     (conjoin syntax? ctc:or/c-sub-property))
                      <
                      #:key ctc:or/c-sub-property))
   (define-values (in-ty out-ty)
@@ -397,12 +402,15 @@
 
 ;; tc-list/c : syntax -> (Con t)
 (define (tc-list/c form)
-  (define subs (sort (trawl-for-subs (ctc:list/c-sub-property form #f)
-                                     (syntax-parser [:ctc:list/c^ #t]
-                                                    [_ #f])
-                                     ctc:list/c-sub-property)
-                     <
-                     #:key ctc:list/c-sub-property))
+  (define (is-list/c? stx) (equal? (tr:ctc-property stx) 'list/c))
+  (define subs
+    (match (syntax->list form)
+      [(list subforms ...)
+       (define subs* (trawl-for-subs subforms is-list/c?
+                                     (conjoin syntax? ctc:list/c-sub-property)))
+       (sort subs* < #:key ctc:list/c-sub-property)]
+      [#f (int-err "no subforms for given list/c form ~a" form)]))
+
   (define-values (in-tys out-tys)
     (for/lists (ins outs)
                ([sub (in-list subs)])
@@ -432,3 +440,14 @@
                         #:delayed? #t
                         "type" ty)
        (-Con (Un) Univ)]])
+
+
+(define (check-contract form [expected #f])
+  (define rule (tr:ctc-property form))
+  (match rule
+    ['-> (tc-arrow-contract form)]
+    ['->i (tc-arrow-i-contract form)]
+    ['and/c (tc-and/c form)]
+    ['or/c (tc-or/c form)]
+    ['list/c (tc-list/c form)]
+    [_ (int-err "unknown contract form ~a" rule)]))

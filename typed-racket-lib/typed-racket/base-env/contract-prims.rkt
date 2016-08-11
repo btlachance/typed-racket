@@ -94,43 +94,47 @@
   (syntax-parse stx
     #:literals (and/c)
     [(and/c ctc:expr ...)
-     (ctc:and/c
+     (tr:ctc-property
       (quasisyntax/loc stx
         (untyped:and/c #,@(for/list ([ctc (in-syntax #'(ctc ...))]
                                      [idx (in-naturals)])
-                            (ctc:and/c-sub-property ctc idx)))))]))
+                            (ctc:and/c-sub-property ctc idx))))
+      'and/c)]))
 
 (define-syntax (or/c stx)
   (syntax-parse stx
     #:literals (or/c)
     [(or/c ctc:expr ...)
-     (ctc:or/c
+     (tr:ctc-property
       (quasisyntax/loc stx
         (untyped:or/c #,@(for/list ([ctc (in-syntax #'(ctc ...))]
                                     [idx (in-naturals)])
-                           (ctc:or/c-sub-property ctc idx)))))]))
+                           (ctc:or/c-sub-property ctc idx))))
+      'or/c)]))
 
 (define-syntax (list/c stx)
   (syntax-parse stx
     #:literals (list/c)
     [(list/c ctc:expr ...)
-     (ctc:list/c
+     (tr:ctc-property
       (quasisyntax/loc stx
         (untyped:list/c #,@(for/list ([ctc (in-syntax #'(ctc ...))]
                                       [idx (in-naturals)])
-                             (ctc:list/c-sub-property ctc idx)))))]))
+                             (ctc:list/c-sub-property ctc idx))))
+      'list/c)]))
 
 (define-syntax (->/c stx)
   (syntax-parse stx
     #:literals (->/c)
     [(->/c doms:expr ... rng:expr)
-     (ctc:arrow
+     (tr:ctc-property
       (ignore
        (quasisyntax/loc stx
          (untyped:-> #,@(for/list ([dom (in-syntax #'(doms ...))]
                                    [idx (in-naturals)])
                           (ctc:arrow-dom-property dom idx))
-                     #,(ctc:arrow-rng #'rng)))))]))
+                     #,(ctc:arrow-rng #'rng))))
+      '->)]))
 
 (define-syntax (->i stx)
   (define-syntax-class id+ctc
@@ -275,16 +279,14 @@
           ;; TODO: post-conditions are only allowed when dependent-range is
           ;; non-any
           (~optional (~seq post:post-condition ...)))
-     (ctc:arrow-i
+     (tr:ctc-property
       (ignore
        (quasisyntax/loc stx
          (untyped:->i (#,@(apply append (map syntax->list (or (attribute mand-doms.form)
                                                               (list)))))
                       (#,@(apply append (map syntax->list (or (attribute opt-doms.form)
                                                               (list)))))
-                      #,@(if (attribute pre)
-                             (flatten (attribute pre.forms))
-                             (list))
+                      #,@(flatten (or (attribute pre.forms) (list)))
                       #,@(if (attribute rest)
                              (list #'#:rest #`[rest.id
                                                #,@(or (and (attribute rest.deps) (list (attribute rest.deps)))
@@ -298,7 +300,6 @@
                                                              #'rest.ctc))])
                              (list))
                       rng.form
-                      #,@(if (attribute post)
-                             (flatten (attribute post.forms))
-                             (list))))))]))
+                      #,@(flatten (or (attribute post.forms) (list))))))
+      '->i)]))
 

@@ -148,8 +148,8 @@
                (->optkey () #:x Univ #f #:y Univ #f -Real))]
    [tc-e (->i ()
               [result real?])
-         (-Con (->opt () Univ)
-               (->opt () -Real))]
+         (-Con (t:-> Univ)
+               (t:-> -Real))]
    [tc-e (->i ()
               #:rest [xs (listof real?)]
               [sum (xs) (and/c real?

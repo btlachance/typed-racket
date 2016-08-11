@@ -30,11 +30,7 @@
    [cond-contracted check-unit-from-context (syntax? (or/c tc-results/c #f) . -> . full-tc-results/c)]))
 
 (define-signature check-contract^
-  ([cond-contracted tc-arrow-contract (syntax? . -> . full-tc-results/c)]
-   [cond-contracted tc-arrow-i-contract (syntax? . -> . full-tc-results/c)]
-   [cond-contracted tc-and/c (syntax? . -> . full-tc-results/c)]
-   [cond-contracted tc-or/c (syntax? . -> . full-tc-results/c)]
-   [cond-contracted tc-list/c (syntax? . -> . full-tc-results/c)]
+  ([cond-contracted check-contract (syntax? . -> . full-tc-results/c)]
    [cond-contracted coerce-to-con (Type/c . -> . Type/c)]))
 
 (define-signature tc-if^
