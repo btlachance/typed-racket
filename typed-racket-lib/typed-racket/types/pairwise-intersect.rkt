@@ -71,6 +71,7 @@
     [((Univ:) u) u]
     [(u (Univ:)) u]
     [((Function: arr1s) (Function: arr2s))
+     #:when (= (length arr1s) (length arr2s))
      (make-Function (map pairwise-intersect/arr arr1s arr2s))]
     [((Result: ss pset-s o) (Result: ts pset-t o))
      (make-Result (pairwise-intersect ss ts)
@@ -82,10 +83,6 @@
      (make-ValuesDots (map pairwise-intersect s-rs t-rs)
                       (pairwise-intersect s-dty t-dty)
                       dbound)]
-    ;; because we always want to return the poly type, regardless of it being on
-    ;; the left or the right, i don't think we can use match*/no-order
-    ;; XXX: intersect always returns the mono type. why is that? is it ok that
-    ;; pairwise-intersect returns the poly type?
     [((Poly: vs b) _)
      #:when (or (subtype s t) (subtype t s))
      s]

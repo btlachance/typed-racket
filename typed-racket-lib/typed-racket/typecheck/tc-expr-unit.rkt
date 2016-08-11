@@ -39,21 +39,13 @@
 (define-literal-set tc-expr-literals #:for-label
   (find-method/who))
 
-(define (provide/contract-original-id/#f id)
-  (and (identifier? id)
-       (not (lookup-type/lexical id #:fail (λ _ #f)))
-       (provide/contract-info? (syntax-local-value id))
-       (provide/contract-info-original-id (syntax-local-value id))))
-
 ;; typecheck an identifier
 ;; the identifier has variable effect
 ;; tc-id : identifier -> tc-results
 (define/cond-contract (tc-id id)
   (--> identifier? full-tc-results/c)
   (define rename-id (contract-rename-id-property id))
-  (define id* (or (provide/contract-original-id/#f rename-id)
-                  rename-id
-                  id))
+  (define id* (or rename-id id))
   ;; see if id* is an alias for an object
   ;; if not (-id-path id*) is returned
   (define obj (lookup-alias/lexical id*))
