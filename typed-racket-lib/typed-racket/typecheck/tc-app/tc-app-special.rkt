@@ -15,7 +15,7 @@
          (for-label racket/base racket/bool '#%paramz))
 
 
-(import tc-expr^)
+(import tc-expr^ check-contract^)
 (export tc-app-special^)
 
 (define-literal-set special-literals #:for-label
@@ -76,4 +76,8 @@
                   (#%plain-app mp2 (#%plain-app call-with-values (#%plain-lambda () e) list))))
     #:declare mp1 (id-from 'make-promise 'racket/promise)
     #:declare mp2 (id-from 'make-promise 'racket/promise)
-    (ret (-Promise (tc-expr/t #'e)))))
+    (ret (-Promise (tc-expr/t #'e))))
+  (pattern (app-ctc ctc val pos neg name loc)
+    #:declare app-ctc (id-from 'apply-contract 'racket/contract/private/base)
+    #:do [(register-ignored! #'loc)]
+    (check-contract-app #'ctc #'val)))

@@ -243,19 +243,14 @@
        #:when (syntax-property form 'provide/contract-original-contract)
        ;; because p/c lifts the contract before this define-syntaxes and wraps
        ;; the contract in a coerce-to-contract, we know it has contract type
-       (define ctc-ty (lookup-type/lexical #'ctc-id))
-       (define protected-id-ty (lookup-type/lexical #'id))
-       (check-below protected-id-ty (Con*-in-ty ctc-ty))
-
-       (define contracted-ty
-         (pairwise-intersect protected-id-ty (Con*-out-ty ctc-ty)))
-       (register-type #'p/c-for-id contracted-ty)
+       (match-define (tc-result1: ty) (check-contract-app #'ctc-id #'id))
+       (register-type #'p/c-for-id ty)
        ;; XXX: we're cheating here and making a def-binding even though this
        ;; (the transformer) is a macro, which normally gets def-stx-binding and
        ;; would normally be prevented from flowing to untyped contexts. We do
        ;; this because we need contracted values to be able to flow to untyped
        ;; contexts; putting a contract on a function shouldn't stop that.
-       (list (make-def-binding #'p/c-for-id contracted-ty))]
+       (list (make-def-binding #'p/c-for-id ty))]
 
       [_ (list)])))
 

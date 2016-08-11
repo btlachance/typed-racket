@@ -254,4 +254,11 @@
    [tc-e (and/c (->/c exact-integer? exact-integer?)
                 (->/c zero? zero?))
          (-Con (t:-> -Integer Univ)
-               (t:-> -Number -Zero))]))
+               (t:-> -Number -Zero))]
+   [tc-e (contract even? 5 'pos 'neg)
+         -PosByte]
+   [tc-err (contract even? "five" 'pos 'neg)]
+   [tc-e (contract (->/c even? even?)
+                   (ann add1 (-> Integer Integer))
+                   'pos 'neg)
+         (t:-> -Integer -Integer)]))

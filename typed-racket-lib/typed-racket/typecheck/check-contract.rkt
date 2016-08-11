@@ -8,6 +8,7 @@
          (env type-alias-helper type-env-structs lexical-env)
          (types subtype abbrev tc-result match-expanders union numeric-tower
                 pairwise-intersect)
+         (typecheck check-below)
          (only-in (infer infer) meet join)
          (utils tc-utils contract-utils)
          (rep type-rep)
@@ -441,6 +442,11 @@
                         "type" ty)
        (-Con (Un) Univ)]])
 
+(define (check-contract-app ctc to-protect [expected #f])
+  (define ctc-ty (coerce-to-con (tc-expr/t ctc)))
+  (define val-ty (tc-expr/t to-protect))
+  (check-below val-ty (Con*-in-ty ctc-ty))
+  (ret (pairwise-intersect val-ty (Con*-out-ty ctc-ty))))
 
 (define (check-contract form [expected #f])
   (define rule (tr:ctc-property form))

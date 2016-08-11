@@ -31,7 +31,7 @@
 
 (define-signature check-contract^
   ([cond-contracted check-contract (syntax? (or/c tc-results/c #f) . -> . full-tc-results/c)]
-   [cond-contracted coerce-to-con (Type/c . -> . Type/c)]))
+   [cond-contracted check-contract-app (syntax? syntax? (or/c tc-results/c #f) . -> . full-tc-result/c)]))
 
 (define-signature tc-if^
   ([cond-contracted tc/if-twoarm ((syntax? syntax? syntax?) ((or/c tc-results/c #f)) . ->* . full-tc-results/c)]))
