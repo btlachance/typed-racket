@@ -5,5 +5,6 @@
          typed-racket/base-env/contract-prims)
 
 (provide (all-from-out typed-racket/base-env/contract-prims)
-         (rename-out (all-from-out racket/contract)
-                     [case-> case->/c]))
+         (except-out (all-from-out racket/contract) case-> ->* ->)
+         (rename-out [case-> case->/c]
+                     [->* ->*/c]))
