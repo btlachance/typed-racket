@@ -7,9 +7,11 @@
                      racket/list
                      syntax/parse
                      syntax/transformer
-                     (types abbrev numeric-tower union)
                      (utils contract-utils)
                      (private syntax-properties))
+         ;; these types go into ignore-some-expr-property, which must contain
+         ;; syntax of the surface-level type (e.g. Real instead of -Real)
+         (base-env base-types base-types-extra)
          (prefix-in untyped: racket/contract/base))
 (provide (except-out (all-defined-out)
                      define-contract)
@@ -25,36 +27,31 @@
      #'(begin
          (define-syntax ctc
            (make-variable-like-transformer
-            #`(#,(ignore-some-expr-property #'#%expression ty)
+            #`(#,(ignore-some-expr-property #'#%expression #'ty)
                untyped-ctc))) ...)]))
 
 (define-contract
-  [flat-named-contract (-poly (a b) (-> Univ (-FlatCon a b) (-FlatCon a b)))]
-  [any/c (-FlatCon Univ Univ)]
-  [none/c (-FlatCon Univ Univ)]
-  [not/c (-poly (a b) (-> (-FlatCon a b) (-FlatCon a a)))]
-  [=/c (cl->*
-        (-> -Nat (-FlatCon Univ -Nat))
-        (-> -Integer (-FlatCon Univ -Integer))
-        (-> -Real (-FlatCon Univ -Real)))]
-  [</c (-> -Real (-FlatCon Univ -Real))]
-  [>/c (-> -Real (-FlatCon Univ -Real))]
-  [<=/c (-> -Real (-FlatCon Univ -Real))]
-  [>=/c (-> -Real (-FlatCon Univ -Real))]
-  [between/c (-> -Real -Real (-FlatCon Univ -Real))]
-  [real-in (-> -Real -Real (-FlatCon Univ -Real))]
-  [integer-in (cl->*
-               ;; using -Integer here because the second argument, unless we're
-               ;; dealing with negative numbers, won't influence the type. This
-               ;; way args like (-PosInt, -Integer) will still give us the
-               ;; information that we want.
-               (-> -PosInt -Integer (-FlatCon Univ -PosInt))
-               (-> -Nat -Integer (-FlatCon Univ -Nat))
-               (-> -Integer -Integer (-FlatCon Univ -Integer)))]
-  [natural-number/c (-FlatCon Univ -Nat)]
-  [string-len/c (-> -Real (-FlatCon Univ -String))]
-  [false/c (-FlatCon Univ -False)]
-  [printable/c (-FlatCon Univ Univ)]
+  [flat-named-contract (All (a b) (-> Any (FlatCon a b) (FlatCon a b)))]
+  [any/c (FlatCon Any Any)]
+  [none/c (FlatCon Any Any)]
+  [not/c (All (a b) (-> (FlatCon a b) (FlatCon a a)))]
+  [=/c (case-> (-> Natural (FlatCon Any Natural))
+               (-> Integer (FlatCon Any Integer))
+               (-> Real (FlatCon Any Real)))]
+  [</c (-> Real (FlatCon Any Real))]
+  [>/c (-> Real (FlatCon Any Real))]
+  [<=/c (-> Real (FlatCon Any Real))]
+  [>=/c (-> Real (FlatCon Any Real))]
+  [between/c (-> Real Real (FlatCon Any Real))]
+  [real-in (-> Real Real (FlatCon Any Real))]
+  [integer-in
+   (case-> (-> Positive-Integer Integer (FlatCon Any Positive-Integer))
+           (-> Natural Integer (FlatCon Any Natural))
+           (-> Integer Integer (FlatCon Any Integer)))]
+  [natural-number/c (FlatCon Any Natural)]
+  [string-len/c (-> Real (FlatCon Any String))]
+  [false/c (FlatCon Any False)]
+  [printable/c (FlatCon Any Any)]
   ;; one-of/c
   ;; vectorof
   ;; vector-immutableof (tricky, TR doesn't have immutable vectors)
@@ -62,19 +59,21 @@
   ;; vector-immutable/c
   ;; box/c
   ;; box-immutable/c
-  [listof (-poly (a b) (-> (-Con a b) (-Con (-lst a) (-lst b))))]
-  [non-empty-listof (-poly (a b) (-> (-Con a b) (-Con (-lst a) (-pair b (-lst b)))))]
-  [list*of (-poly (a b) (-> (-Con a b) (-Con (-mu x (-pair a (Un a x)))
-                                             (-mu x (-pair b (Un b x))))))]
-  [cons/c (-poly (a b c d) (-> (-Con a b) (-Con c d) (-Con Univ (-pair b d))))]
+  [listof (All (a b) (-> (Con a b) (Con (Listof a) (Listof b))))]
+  [non-empty-listof
+   (All (a b) (-> (Con a b) (Con (Listof a) (Pairof b (Listof b)))))]
+  [list*of
+   (All (a b) (-> (Con a b) (Con (Rec x (Pairof a (U a x)))
+                                 (Rec x (Pairof b (U b x))))))]
+  [cons/c (All (a b c d) (-> (Con a b) (Con c d) (Con Any (Pairof b d))))]
   ;; cons/dc
-  [syntax/c (-poly (a b) (-> (-FlatCon a b) (-FlatCon (-Syntax a) (-Syntax b))))]
+  [syntax/c (All (a b) (-> (FlatCon a b) (FlatCon (Syntaxof a) (Syntaxof b))))]
   ;; struct/c
   ;; struct/dc
-  [parameter/c (-poly (a b c d) (cl->*
-                                 (-> (-Con a b) (-Con (-Param b) (-Param b)))
-                                 (-> (-Con a b) (-Con c d) (-Con (-Param b d)
-                                                                 (-Param b d)))))]
+  [parameter/c
+   (All (a b c d) (case-> (-> (Con a b) (Con (Parameter b) (Parameter b)))
+                          (-> (Con a b) (Con c d) (Con (Parameter b d)
+                                                       (Parameter b d)))))]
   ;; procedure-arity-includes/c
   ;; hash/c
   ;; hash/dc
@@ -88,7 +87,7 @@
   ;; promise/c
   ;; flat-contract
   ;; flat-contract-predicate
-  [symbols (->* (list) -Symbol (-Con Univ -Symbol))])
+  [symbols (-> Symbol * (Con Any Symbol))])
 
 (define-syntax (and/c stx)
   (syntax-parse stx

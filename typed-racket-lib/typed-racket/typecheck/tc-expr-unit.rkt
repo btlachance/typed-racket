@@ -145,7 +145,7 @@
     (syntax-parse form
       #:literal-sets (kernel-literals tc-expr-literals)
       [:tr:ctc^
-       (check-contract form)]
+       (check-contract form expected)]
       ;; a TR-annotated class
       [stx:tr:class^
        (check-class form expected)]
