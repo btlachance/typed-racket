@@ -208,12 +208,6 @@
          (-Con Univ (-lst Univ))]
    [tc-e (or/c pair?)
          (-Con Univ (-pair Univ Univ))]
-   ;; The literal/predicate for the empty list seem like they should have
-   ;; type (Con (Listof Any)), but that's not how it's currently
-   ;; handled. Note: for contract compatibility it doesn't matter if it's
-   ;; (Con Null) or (Con (Listof Any)); once these are flat contracts,
-   ;; though, their current "core" type means their only type-correct
-   ;; argument is '()
    [tc-e (or/c null?)
          (-Con Univ -Null)]
    [tc-e (or/c (list))

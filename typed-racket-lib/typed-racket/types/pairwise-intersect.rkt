@@ -60,7 +60,9 @@
       "p1" p1
       "p2" p2)]))
 
-;; pairwise-interesct : Type Type -> Type
+;; pairwise-intersect : (case-> (-> Type Type Type)
+;;                              (-> Values Values Values)
+;;                              (-> Result Result Result))
 ;; Computes a lower bound of the two types w.r.t. the "precision order." The
 ;; precision order is like the subtype order except that it does not account for
 ;; variance. Effectively, this amounts to a fold over the two types in a uniform
@@ -90,4 +92,11 @@
      #:when (or (subtype t s) (subtype s t))
      t]
     [(_ _)
-     (intersect s t)]))
+     #:when (and (Type/c? s) (Type/c? t))
+     (intersect s t)]
+    [(_ _)
+     (raise-arguments-error
+      'pairwise-intersect
+      "unable to intersect"
+      "s" s
+      "t" t)]))
