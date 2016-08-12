@@ -74,7 +74,9 @@
 ;; Assumes that ty is a Type/c that confn-type-components returns non-#f
 (define (confn-out ty) (cadr (confn-type-components ty)))
 ;; confn-type-components : Type/c -> #f or ConFnInfo
+;; Note: only gets components for functions with a single unary arr
 (define (confn-type-components ty)
+  ;; TODO: find all unary arities and union their inputs/meet their outputs
   (match ty
     [(Function: (list (arr:
                        (list in-ty)

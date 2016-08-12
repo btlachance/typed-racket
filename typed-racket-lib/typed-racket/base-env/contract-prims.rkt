@@ -1,6 +1,14 @@
 #lang racket/base
-(require (except-in "../utils/utils.rkt"
-                    in-sequence-forever)
+;; This module provides typed versions of identifiers from racket/contract (not
+;; to be confused with prims-contract).
+
+;; Many contract forms (e.g. >/c) can be directly ascribed a type, which is done
+;; using the define-contract macro. Others, though, have more complicated
+;; typings and so the typed version annotates the typechecking-relevant pieces
+;; of surface syntax before delegating to the untyped form. The annotated pieces
+;; are retrieved by the form's type rule, after the form has fully expanded.
+
+(require "../utils/utils.rkt"
          (for-syntax racket/base
                      racket/sequence
                      racket/syntax
@@ -10,7 +18,7 @@
                      (utils contract-utils)
                      (private syntax-properties))
          ;; these types go into ignore-some-expr-property, which must contain
-         ;; syntax of the surface-level type (e.g. Real instead of -Real)
+         ;; syntax objects for surface-level types (e.g. Real instead of -Real)
          (base-env base-types base-types-extra)
          (prefix-in untyped: racket/contract/base))
 (provide (except-out (all-defined-out)
@@ -111,9 +119,15 @@
                            (ctc:or/c-sub-property ctc idx))))
       'or/c)]))
 
+;; list/c needs its own type rule because giving it a function type outright
+;; wouldn't allow us to give e.g. (list/c exact-integer? positive?) a type like
+;; (Con (List Any Real) (List Integer Positive-Real)). The form is polyvariadic
+;; but polydots is currently too weak, it won't let us give list/c a type like
+;; (All ((a b) ...) (-> (Con a b) ... (Con (List a ...) (List b ...)))).
 (define-syntax (list/c stx)
   (syntax-parse stx
     #:literals (list/c)
+    ;; TODO: add a case for higher-order use of list/c---it's a procedure
     [(list/c ctc:expr ...)
      (tr:ctc-property
       (quasisyntax/loc stx
