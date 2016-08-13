@@ -136,13 +136,6 @@
                [result real?])
           (-Con (->* (list) -Real Univ)
                 (->* (list) Univ -Real))]
-    ;; #:rest, with a dependency
-    [tc-e (->i ()
-               #:rest [xs (listof real?)]
-               [sum (xs) (and/c real?
-                                (=/c (apply + xs)))])
-          (-Con (->* (list) -Real Univ)
-                (->* (list) Univ -Real))]
     [tc-err (let ()
               (->i ()
                    #:rest [xs number?]
@@ -150,6 +143,19 @@
               (void))
             #:ret (ret -Void)
             #:msg "#:rest contract must be a list contract"]
+    ;; dom depending on #:rest
+    [tc-e (->i ([x (xs) (lambda: ([x : Integer]) (apply > x -inf.0 xs))])
+               #:rest [xs (listof exact-integer?)]
+               [_ any/c])
+          (-Con (->* (list -Integer) -Integer Univ)
+                (->* (list -Integer) Univ Univ))]
+    ;; rng depending on #:rest
+    [tc-e (->i ()
+               #:rest [xs (listof real?)]
+               [sum (xs) (and/c real?
+                                (=/c (apply + xs)))])
+          (-Con (->* (list) -Real Univ)
+                (->* (list) Univ -Real))]
     ;; mult-value ranges
     [tc-e (->i ([x real?]
                 [y real?])

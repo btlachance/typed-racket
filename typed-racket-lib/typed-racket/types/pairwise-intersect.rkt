@@ -1,4 +1,10 @@
 #lang racket
+
+;; This module provides a function pairwise-intersect for calculating a lower
+;; bound of two types with respect to the precision order (*not* the subtype
+;; order). Contract typechecking uses this function to determine the type of a
+;; contracted value, given the value's type and the contract's output type.
+
 (require "../utils/utils.rkt"
          (rep type-rep prop-rep)
          (types subtype)
@@ -68,6 +74,11 @@
 ;; variance. Effectively, this amounts to a fold over the two types in a uniform
 ;; way. For base types (and, as a default, for unimplemented cases) this
 ;; computes the intersection of the two types.
+
+;; For example,
+;;    (pairwise-intersect (-> Any Any) (-> Real Real)) = (-> Real Real)
+;;    (pairwise-intersect (-> Nat Any) (-> Pos-Real Any)) = (-> Pos-Int Any)
+;;    (pairwise-intersect (-> String Any) (-> Int Any)) = (-> Nothing Any)
 (define (pairwise-intersect s t)
   (match* (s t)
     [((Univ:) u) u]

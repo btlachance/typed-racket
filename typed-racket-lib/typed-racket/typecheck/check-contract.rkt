@@ -1,4 +1,14 @@
 #lang racket/unit
+
+;; This module provides a unit for typechecking contracts. The points of entry
+;; are two functions check-contract-app and check-contract.
+
+;; Each type rule for contracts proceeds by finding annotated pieces of syntax
+;; in the expansion. The typed versions of the contract forms (those in
+;; (base-env contract-prims)) annotate the surface syntax before delegating to
+;; the untyped form. The typechecking rules in this unit are where we finally
+;; use those annotations.
+
 (require racket/match
          racket/list
          racket/function
@@ -18,38 +28,23 @@
 (import tc-expr^)
 (export check-contract^)
 
-;; trawl-for-doms/rng : syntax predicate predicate -> (listof syntax)
-;; Finds syntax/subforms for which is-dom/rng? returns a non-#f value. Does not
-;; recur into arrow subforms, according to is-arrow? since those must still be
-;; typechecked. Do not call with an arrow that is also a domain/range, that will
-;; infinite loop.
-(define (trawl-for-doms/rng form is-dom/rng? is-arrow?)
-  #;(pretty-print (syntax->datum form))
-  (syntax-parse form
-    [_
-     #:when (is-dom/rng? form)
-     (list form)]
-    [(forms ...)
-     (define-values (arrows non-arrows)
-       (for/fold ([arrows '()]
-                  [non-arrows '()])
-                 ([form (in-list (syntax->list #'(forms ...)))])
-         (syntax-parse form
-           [_
-            ;; we only want arrows that match the predicate; e.g. when looking
-            ;; for the rng we have to make sure we don't grab a dom
-            #:when (and (is-arrow? form) (is-dom/rng? form))
-            (values (cons form arrows) non-arrows)]
-           [_
-            #:when (is-arrow? form)
-            (values arrows non-arrows)]
-           [_ (values arrows (cons form non-arrows))])))
-     (for/fold ([doms/rng arrows])
-               ([non-arrow (in-list non-arrows)])
-       (append doms/rng (trawl-for-doms/rng non-arrow is-dom/rng? is-arrow?)))]
-    [_ '()]))
+(define (check-contract-app ctc to-protect [expected #f])
+  (define ctc-ty (coerce-to-con (tc-expr/t ctc)))
+  (define val-ty (tc-expr/t to-protect))
+  (check-below val-ty (Con*-in-ty ctc-ty))
+  (ret (pairwise-intersect val-ty (Con*-out-ty ctc-ty))))
 
-;; tc-arrow-contract : syntax -> (Con t)
+(define (check-contract form [expected #f])
+  (define rule (tr:ctc-property form))
+  (match rule
+    ['-> (tc-arrow-contract form)]
+    ['->i (tc-arrow-i-contract form)]
+    ['and/c (tc-and/c form)]
+    ['or/c (tc-or/c form)]
+    ['list/c (tc-list/c form)]
+    [_ (int-err "unknown contract form ~a" rule)]))
+
+
 (define (tc-arrow-contract form)
   (define arrow-subforms (or (syntax->list form) (list)))
 
@@ -80,49 +75,67 @@
   (ret (-Con (->* out-doms (Con*-in-ty rng-ty))
              (->* in-doms (Con*-out-ty rng-ty)))))
 
+;; trawl-for-doms/rng : syntax predicate predicate -> (listof syntax) Finds
+;; syntax/subforms for which is-dom/rng? returns a non-#f value. Does not recur
+;; into arrow subforms, according to is-arrow?, since those must still be
+;; typechecked, and we do not want to mix the components of one arrow contract
+;; with the components of another.
+;; NOTE: Clients should not call with a form that is both is-dom/rng? and
+;; is-arrow?. In that case, this will simply return a list containing the given
+;; form and not its subforms. If they try to typecheck the result thinking it's
+;; a *subform*, they will end up in an infinite loop between the arrow
+;; typechecking rule and the higher-level typechecker.
+(define (trawl-for-doms/rng form is-dom/rng? is-arrow?)
+  #;(pretty-print (syntax->datum form))
+  (syntax-parse form
+    [_
+     #:when (is-dom/rng? form)
+     (list form)]
+    [(forms ...)
+     (define-values (arrows non-arrows)
+       (for/fold ([arrows '()]
+                  [non-arrows '()])
+                 ([form (in-list (syntax->list #'(forms ...)))])
+         (syntax-parse form
+           [_
+            ;; we only want arrows that match the predicate; e.g. when looking
+            ;; for the rng we have to make sure we don't grab a dom
+            #:when (and (is-arrow? form) (is-dom/rng? form))
+            (values (cons form arrows) non-arrows)]
+           [_
+            #:when (is-arrow? form)
+            (values arrows non-arrows)]
+           [_ (values arrows (cons form non-arrows))])))
+     (for/fold ([doms/rng arrows])
+               ([non-arrow (in-list non-arrows)])
+       (append doms/rng (trawl-for-doms/rng non-arrow is-dom/rng? is-arrow?)))]
+    [_ '()]))
 
-;; tc-arrow-i-contract : syntax -> (Con t)
 
-;; v2 pseudocode/notes
+;; The function tc-arrow-i-contract typechecks the expansion of the TR's ->i
+;; macro. That macro annotates each sub-contract's RHS (e.g. the actual
+;; domain/range contract) with its surface identifier, its relative position in
+;; the function signature, whether it's mandatory, as well as a few more details
+;; before delegating to Racket's ->i. tc-arrow-i-contract uses that information
+;; to recover the order of each sub-contract so that it can typecheck them in
+;; the correct order and determine the contract's type.
 
-;; main data structure: list of expanded ctc forms first
+;; What makes this type rule difficult is that the typed ->i macro only sees
+;; each contract's and its dependencies' surface syntax, which means that's all
+;; it can put in the annotations for this function to recover---during
+;; typechecking, though, all of the dependencies' identifiers in ->i's expansion
+;; are not necessarily the same as the surface identifiers stored in the
+;; annotation. To use the information from the typed ->i macro we must relate
+;; the surface identifiers to the expanded identifiers.
 
-;; 1) topo-sort this list via a helper function, and then the type rule will
-;; just operate on that sorted list
-
-;; Note: we'll still have to handle the surface/expanded dep list association, but
-;; that will be common code b/w the doms and multi-value range checking
-
-;; 2) When checking the current contract (call it "sub"), we must extend the
-;; environment with a mapping from each of sub's dependencies' expanded
-;; identifiers to their output types -- this is the identifier that is in the
-;; body of the expanded contract (not the surface identifier). That mapping
-;; couldn't have happened prior to checking sub because no dependency knows its
-;; own expanded identifier (due to how ->i expands, we place the dependencies'
-;; identifiers in the body of the contract for later recovery post-expansion;
-;; without that trick, maybe a walk over the entire expanded syntax from ->i
-;; could recover this; maybe there's even other macro-trickery to simplify this
-;; further). Thus, after checking any contract, we pass along its full type by
-;; mapping its surface identifier to that type. This works because all contracts
-;; know their own surface identifier and all contracts know the surface
-;; identifiers of their dependencies.
-
-;; topo-sort-ctcs : (Listof Stx) (Stx -> Id) (Stx -> Listof Id) -> Listof Stx
-;; Returns a permutation of ctcs in topo-order, according to their dependencies
-(define (topo-sort-ctcs ctcs ctc->id ctc->deps)
-  (define dep-map (for/list ([ctc ctcs])
-                    (define surface-id (ctc->id ctc))
-                    (define deps (or (ctc->deps ctc) (list)))
-                    (cons surface-id deps)))
-  (define sorted-ids* (flatten (find-strongly-connected-type-aliases dep-map)))
-  (define topo-sorted-ids (reverse sorted-ids*))
-
-  (define ((ctc-matcher-for-id id) ctc) (free-identifier=? id (ctc->id ctc)))
-  (for/list ([id topo-sorted-ids])
-    (findf (ctc-matcher-for-id id) ctcs)))
-
-(define ((mk/lookup-fail-in name) id)
-  (int-err (format "couldn't find ~a in ~a" id name)))
+;; Consider the following piece of the domain from an ->i use, [x (d1 d2) ctc],
+;; which has name x, dependencies d1 and d2, and contract ctc. To support
+;; correlating the surface dependency identifiers with the expanded identifiers,
+;; TR's ->i macro rewrites ctc to (begin d1 d2 ctc) before delegating. This
+;; allows the type rule to retrieve the expanded d1 and d2 and correlate them
+;; with the surface versions stored in the annotation, at the cost of leaking
+;; the result of this rewrite to the user when ->i raises errors about syntax
+;; and contract violations.
 
 (define (tc-arrow-i-contract form)
   (define arrow-subforms (or (syntax->list form) (list)))
@@ -130,7 +143,7 @@
     (int-err "no subforms for given ->i form ~a" form))
   (define (is-arrow-i? stx)
     (equal? (tr:ctc-property stx) '->i))
-  (define expanded-doms
+  (define doms
     (remove-duplicates
      (append*
       (map
@@ -145,6 +158,11 @@
 
   (define dom-ctc->id (compose dom-info-id ctc:arrow-i-dom-property))
   (define dom-ctc->deps (compose dom-info-deps ctc:arrow-i-dom-property))
+
+  ;; rest-ctc->dom-ctc produces a dom-info struct for the given rest contract's
+  ;; rest-info. Useful for typechecking rest contracts which may depend on/be
+  ;; depended on by the dom and rng contracts. Treating it as an extra dom
+  ;; contract lets us typecheck the whole lot uniformly
   (define (rest-ctc->dom-ctc rest-ctc)
     (define rest (ctc:arrow-i-rest-property rest-ctc))
     (ctc:arrow-i-dom-property
@@ -176,24 +194,22 @@
     (if (dom? ctc)
         (dom-ctc->deps ctc)
         (rng-ctc->deps ctc)))
-  (define ctcs (append expanded-doms rngs))
+  (define ctcs (append doms rngs))
   (define-values (topo-sorted-dom-ctcs topo-sorted-rng-ctcs)
     (partition
      dom?
      (topo-sort-ctcs (if rest-ctc/#f
-                         ;; Typechecking #:rest arguments is similar enough to
-                         ;; typechecking other domain arguments that we can
-                         ;; typecheck them both uniformly. We simply cons it to
-                         ;; the other contracts because topo-sort-ctcs doesn't
-                         ;; care about the order of its input.
                          (cons (rest-ctc->dom-ctc rest-ctc/#f) ctcs)
                          ctcs)
                      dom/rng-ctc->id
                      dom/rng-ctc->deps)))
 
   ;; check-subcontract : Stx (Stx -> Listof Stx) Env -> Type/c
-  ;; Calculates the type of ctc. All its dependencies must have their surface
-  ;; id mapped to their contract type in env.
+  ;; Calculates the Con* type of ctc. All of ctc's dependencies must have their
+  ;; surface id mapped to their Con* type in env. Uses ctc->deps to get the
+  ;; deps' surface ids so that, after retrieving the deps' expanded ids from the
+  ;; the (begin ...)-rewritten contract, it can update env with the appropriate
+  ;; type for each expanded id based on its Con* type.
   (define (check-subcontract ctc ctc->deps env)
     (define surface-deps (or (ctc->deps ctc) (list)))
     (define-values (expanded-deps expanded-ctc)
@@ -230,8 +246,9 @@
         "#:rest contract type" non-list-ty)
        (-Con (make-Listof Univ) (make-Listof (Un)))]))
 
-  ;; if we didn't care about the order of error messages, we could check all
-  ;; of the conditions using rng-checked-env
+  ;; Calculates the type of the pre/post-condition expression. Exactly like
+  ;; check-subcontract, each pre/post-condition must have its dep's surface id's
+  ;; mapped to their Con* type in env.
   (define (check-pre/post expr env expr->deps expr->desc?)
     (define-values (expanded-deps expanded-expr)
       (syntax-parse expr
@@ -274,11 +291,6 @@
     (for/lists (in-tys out-tys)
                ([ctc rng-ctcs])
       (define lookup-fail (mk/lookup-fail-in "rng-checked-env"))
-      ;; TODO: we're calling check-subcontract twice by calling it here, but I'm
-      ;; not sure of another way to handle the two cases: a) when the ctc has
-      ;; deps, rng-checked-env doesn't contain entries for its expanded deps
-      ;; which makes calling tc-expr/t not work b) when the ctc is unnamed, we
-      ;; can't look its type up in rng-checked-env because it has no id
       (define ctc-ty (check-subcontract ctc rng-ctc->deps rng-checked-env))
       (values (Con*-in-ty ctc-ty) (Con*-out-ty ctc-ty))))
 
@@ -298,7 +310,7 @@
             (sort posts < #:key post->position))
 
 
-  (define dom-infos (map ctc:arrow-i-dom-property expanded-doms))
+  (define dom-infos (map ctc:arrow-i-dom-property doms))
   (define-values (kw-doms plain-doms)
     (partition (compose keyword? dom-info-type) dom-infos))
   (define-values (reqd-plain-doms opt-plain-doms)
@@ -316,8 +328,6 @@
         (define kw (dom-info-type kw-info))
         (define ty (lookup doms-checked-env (dom-info-id kw-info) lookup-fail))
         (make-Keyword kw (Con*in/out-ty ty) (dom-info-mandatory? kw-info)))
-      ;; Assumes list-ty is a list type. The usages in the make-arr* below are
-      ;; guarded by the list-ctc-ty? check above.
       (define (list-contents-ty list-ty)
         (match list-ty
           [(Listof: ty) ty]))
@@ -325,17 +335,38 @@
        (make-arr* (map (compose Con*-out-ty dom-ty) doms)
                   (make-Values (map (λ (ty) (-result ty -tt-propset -empty-obj)) rng-in-tys))
                   #:rest (and rest-ctc-ty/#f
+                              ;; at this point, we know rest-ctc-ty/#f will be
+                              ;; given a list type
                               (list-contents-ty (Con*-out-ty rest-ctc-ty/#f)))
                   #:kws (map (kw-in/out Con*-out-ty) sorted-kw-doms))
        (make-arr* (map (compose Con*-in-ty dom-ty) doms)
                   (make-Values (map (λ (ty) (-result ty -tt-propset -empty-obj)) rng-out-tys))
                   #:rest (and rest-ctc-ty/#f
+                              ;; ditto above remark about rest-ctc-ty/#f
                               (list-contents-ty (Con*-in-ty rest-ctc-ty/#f)))
                   #:kws (map (kw-in/out Con*-in-ty) sorted-kw-doms)))))
   (ret (-Con (make-Function in-arrs) (make-Function out-arrs))))
 
+;; topo-sort-ctcs : (Listof Stx) (Stx -> Id) (Stx -> Listof Id) -> Listof Stx
+;; Returns a permutation of ctcs in topo-order, according to their dependencies
+(define (topo-sort-ctcs ctcs ctc->id ctc->deps)
+  (define dep-map (for/list ([ctc ctcs])
+                    (define surface-id (ctc->id ctc))
+                    (define deps (or (ctc->deps ctc) (list)))
+                    (cons surface-id deps)))
+  (define sorted-ids* (flatten (find-strongly-connected-type-aliases dep-map)))
+  (define topo-sorted-ids (reverse sorted-ids*))
+
+  (define ((ctc-matcher-for-id id) ctc) (free-identifier=? id (ctc->id ctc)))
+  (for/list ([id topo-sorted-ids])
+    (findf (ctc-matcher-for-id id) ctcs)))
+
+(define ((mk/lookup-fail-in name) id)
+  (int-err (format "couldn't find ~a in ~a" id name)))
+
 ;; trawl-for-subs : syntax -> (list syntax)
-;; Don't call with a dont-recur? that is also is-sub?
+;; Don't call with a dont-recur? that is also is-sub?; similar reason as with
+;; trawl-for-doms/rng
 (define (trawl-for-subs form dont-recur? is-sub?)
   (syntax-parse form
     [_
@@ -352,7 +383,7 @@
          [_ (append subs (trawl-for-subs form dont-recur? is-sub?))]))]
     [_ '()]))
 
-;; tc-and/c : syntax -> (Con t)
+
 (define (tc-and/c form)
   (define subforms (or (syntax->list form) (list)))
   (when (empty? subforms)
@@ -380,7 +411,6 @@
           (values in-ty (pairwise-intersect out-ty (Con*-out-ty ty))))))
   (ret (-Con in-ty out-ty)))
 
-;; tc-or/c : syntax -> (Con t)
 (define (tc-or/c form)
   (define subforms (or (syntax->list form) (list)))
   (when (empty? subforms)
@@ -401,7 +431,6 @@
        (join out-ty (Con*-out-ty con-ty)))))
   (ret (-Con in-ty out-ty)))
 
-;; tc-list/c : syntax -> (Con t)
 (define (tc-list/c form)
   (define (is-list/c? stx) (equal? (tr:ctc-property stx) 'list/c))
   (define subs
@@ -423,6 +452,7 @@
          [((list _ _ ...) (list _ _ ...))
           (-Con (apply -lst* in-tys) (apply -lst* out-tys))])))
 
+
 (define (coerce-to-con ty)
   (define coercible-simple-value-types
     (Un -Null -Symbol -Boolean -Keyword -Char -Bytes -String -Number))
@@ -441,19 +471,3 @@
                         #:delayed? #t
                         "type" ty)
        (-Con (Un) Univ)]])
-
-(define (check-contract-app ctc to-protect [expected #f])
-  (define ctc-ty (coerce-to-con (tc-expr/t ctc)))
-  (define val-ty (tc-expr/t to-protect))
-  (check-below val-ty (Con*-in-ty ctc-ty))
-  (ret (pairwise-intersect val-ty (Con*-out-ty ctc-ty))))
-
-(define (check-contract form [expected #f])
-  (define rule (tr:ctc-property form))
-  (match rule
-    ['-> (tc-arrow-contract form)]
-    ['->i (tc-arrow-i-contract form)]
-    ['and/c (tc-and/c form)]
-    ['or/c (tc-or/c form)]
-    ['list/c (tc-list/c form)]
-    [_ (int-err "unknown contract form ~a" rule)]))
