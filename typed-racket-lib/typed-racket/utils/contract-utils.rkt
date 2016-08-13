@@ -2,19 +2,7 @@
 (require
  "utils.rkt"
  (rep type-rep prop-rep))
-(provide
- (struct-out dom-info)
- (struct-out post-info)
- (struct-out pre-info)
- (struct-out rng-info)
- (struct-out rest-info)
- Con*-in-ty
- Con*-out-ty
- Con*:
- confn-in
- confn-out
- confn-type-components
- ConFn*:)
+(provide (all-defined-out))
 
 ;; dom-info is a (dom-info Option<Syntax> Option<Deps> Syntax ArgType Boolean)
 ;; Note: its components contain unexpanded/surface syntax.
@@ -92,3 +80,26 @@
     (syntax-case stx ()
       [(_ in out)
        #'(? confn-type-components (app confn-in in) (app confn-out out))])))
+
+;; Various symbols used as keys in identifying pieces of contract expansion
+(define and/c-key 'and/c)
+(define and/c-index-key 'and/c-index)
+
+(define or/c-key 'or/c)
+(define or/c-index-key 'or/c-index)
+
+(define list/c-key 'list/c)
+(define list/c-index-key 'list/c-index)
+
+(define ->-key '->)
+(define ->-dom-key '->-dom)
+(define ->-rng-key '->-rng)
+
+(define ->i-key '->i)
+(define ->i-dom-key '->i-dom)
+(define ->i-rng-key '->i-rng)
+(define ->i-rest-key '->i-rest)
+(define ->i-pre-key '->i-pre)
+(define ->i-post-key '->i-post)
+
+

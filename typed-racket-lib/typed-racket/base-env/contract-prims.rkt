@@ -108,8 +108,8 @@
       (quasisyntax/loc stx
         (untyped:and/c #,@(for/list ([ctc (in-syntax #'(ctc ...))]
                                      [idx (in-naturals)])
-                            (ctc:and/c-sub-property ctc idx))))
-      'and/c)]))
+                            (tr:ctc-sub-property ctc (cons and/c-index-key idx)))))
+      and/c-key)]))
 
 (define-syntax (or/c stx)
   (syntax-parse stx
@@ -119,8 +119,8 @@
       (quasisyntax/loc stx
         (untyped:or/c #,@(for/list ([ctc (in-syntax #'(ctc ...))]
                                     [idx (in-naturals)])
-                           (ctc:or/c-sub-property ctc idx))))
-      'or/c)]))
+                           (tr:ctc-sub-property ctc (cons or/c-index-key idx)))))
+      or/c-key)]))
 
 ;; list/c needs its own type rule because giving it a function type outright
 ;; wouldn't allow us to give e.g. (list/c exact-integer? positive?) a type like
@@ -136,8 +136,8 @@
       (quasisyntax/loc stx
         (untyped:list/c #,@(for/list ([ctc (in-syntax #'(ctc ...))]
                                       [idx (in-naturals)])
-                             (ctc:list/c-sub-property ctc idx))))
-      'list/c)]))
+                             (tr:ctc-sub-property ctc (cons list/c-index-key idx)))))
+      list/c-key)]))
 
 (define-syntax (->/c stx)
   (syntax-parse stx
@@ -148,9 +148,9 @@
        (quasisyntax/loc stx
          (untyped:-> #,@(for/list ([dom (in-syntax #'(doms ...))]
                                    [idx (in-naturals)])
-                          (ctc:arrow-dom-property dom idx))
-                     #,(ctc:arrow-rng #'rng))))
-      '->)]))
+                          (tr:ctc-sub-property dom (cons ->-dom-key idx)))
+                     #,(tr:ctc-sub-property #'rng (cons ->-rng-key 0)))))
+      ->-key)]))
 
 (define-syntax (->i stx)
   (define-syntax-class id+ctc
@@ -183,7 +183,7 @@
                            #`(#,@kw-to-splice
                               (dom.id
                                #,@deps-to-splice
-                               #,(ctc:arrow-i-dom-property
+                               #,(tr:ctc-sub-property
                                   ;; ->i doesn't preserve the syntax properties if we
                                   ;; put this on the id+ctc pair; it also doesn't
                                   ;; guarantee that the identifier for the named dom
@@ -191,7 +191,7 @@
                                   ;; ctc is most likely to be in the expansion, so
                                   ;; we'll put all the properties there
                                   #`(begin #,@(or (attribute dom.deps) (list)) dom.ctc)
-                                  info))))))
+                                  (cons ->i-dom-key info)))))))
   ;; TODO: parameterized syntax class for streamlining pre/post conditions
   (define pre-counter 0)
   ;; pre-condition->forms : Syntax Syntax #:desc? [Option<Boolean>] #:name [Option<String>] -> Listof<(U Syntax Listof<Syntax>)>
@@ -204,12 +204,13 @@
     (list kw
           deps
           (if name (list name) (list))
-          (ctc:arrow-i-pre-property
+          (tr:ctc-sub-property
            #`(let () #,@deps #,condition)
-           (pre-info (syntax->list deps)
-                     (begin0 pre-counter
-                       (set! pre-counter (add1 pre-counter)))
-                     desc?))))
+           (cons ->i-pre-key
+                 (pre-info (syntax->list deps)
+                           (begin0 pre-counter
+                             (set! pre-counter (add1 pre-counter)))
+                           desc?)))))
   (define-splicing-syntax-class pre-condition
     #:attributes (forms)
     (pattern (~seq #:pre (deps:id ...) condition)
@@ -232,15 +233,16 @@
     (list kw
           deps
           (if name (list name) (list))
-          (ctc:arrow-i-post-property
+          (tr:ctc-sub-property
            ;; we use an empty let instead of a begin because the begin
            ;; was getting expanded away, making it much harder to
            ;; analyze the deps and condition as a single unit
            #`(let () #,@deps #,condition)
-           (post-info (syntax->list deps)
-                      (begin0 post-counter
-                        (set! post-counter (add1 post-counter)))
-                      desc?))))
+           (cons ->i-post-key
+                 (post-info (syntax->list deps)
+                            (begin0 post-counter
+                              (set! post-counter (add1 post-counter)))
+                            desc?)))))
   (define-splicing-syntax-class post-condition
     #:attributes (forms)
     (pattern (~seq #:post (deps:id ...) condition)
@@ -265,14 +267,14 @@
        #`[rng.id
           #,@(or (and (attribute rng.deps) (list (attribute rng.deps)))
                  (list))
-          #,(ctc:arrow-i-rng-property new-ctc info)]]))
+          #,(tr:ctc-sub-property new-ctc (cons ->i-rng-key info))]]))
   (define-syntax-class dependent-range
     #:attributes (form)
     (pattern (~literal any)
              #:attr form
-             (ctc:arrow-i-rng-property
+             (tr:ctc-sub-property
               #'untyped:any
-              (rng-info #f #f #'any 0)))
+              (cons ->i-rng-key (rng-info #f #f #'any 0))))
     (pattern ((~literal values) rng:id+ctc ...)
              #:attr form
              #`(values #,@(map rng-id+ctc->form (syntax->list #'(rng ...)))))
@@ -310,15 +312,16 @@
                              (list #'#:rest #`[rest.id
                                                #,@(or (and (attribute rest.deps) (list (attribute rest.deps)))
                                                       (list))
-                                               #,(ctc:arrow-i-rest-property
+                                               #,(tr:ctc-sub-property
                                                   #`(begin #,@(or (attribute rest.deps) (list))
                                                            rest.ctc)
-                                                  (rest-info #'rest.id
-                                                             (or (attribute rest.deps)
-                                                                 (list))
-                                                             #'rest.ctc))])
+                                                  (cons ->i-rest-key
+                                                        (rest-info #'rest.id
+                                                                   (or (attribute rest.deps)
+                                                                       (list))
+                                                                   #'rest.ctc)))])
                              (list))
                       rng.form
                       #,@(flatten (or (attribute post.forms) (list))))))
-      '->i)]))
+      ->i-key)]))
 

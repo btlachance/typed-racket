@@ -37,11 +37,11 @@
 (define (check-contract form [expected #f])
   (define rule (tr:ctc-property form))
   (match rule
-    ['-> (tc-arrow-contract form)]
-    ['->i (tc-arrow-i-contract form)]
-    ['and/c (tc-and/c form)]
-    ['or/c (tc-or/c form)]
-    ['list/c (tc-list/c form)]
+    [(== ->-key) (tc-arrow-contract form)]
+    [(== ->i-key) (tc-arrow-i-contract form)]
+    [(== and/c-key) (tc-and/c form)]
+    [(== or/c-key) (tc-or/c form)]
+    [(== list/c-key) (tc-list/c form)]
     [_ (int-err "unknown contract form ~a" rule)]))
 
 
@@ -50,14 +50,15 @@
 
   (when (empty? arrow-subforms)
     (int-err "no subforms for given -> contract form ~a" form))
-  (define (is-arrow? stx) (equal? (tr:ctc-property stx) '->))
+  (define (is-arrow? stx) (equal? (tr:ctc-property stx) ->-key))
+  (define get-dom-prop (mk/get-sub-prop ->-dom-key))
   (define doms
     (append*
      (map
-      (λ (form) (trawl-for-doms/rng form ctc:arrow-dom-property is-arrow?))
+      (λ (form) (trawl-for-doms/rng form get-dom-prop is-arrow?))
       arrow-subforms)))
-  (define sorted-doms (sort doms < #:key ctc:arrow-dom-property))
-  (define is-rng? (syntax-parser [:ctc:arrow-rng^ #t] [_ #f]))
+  (define sorted-doms (sort doms < #:key get-dom-prop))
+  (define is-rng? (mk/get-sub-prop ->-rng-key))
   (define rng*
     (append* (map
               (λ (form) (trawl-for-doms/rng form is-rng? is-arrow?))
@@ -142,50 +143,55 @@
   (when (empty? arrow-subforms)
     (int-err "no subforms for given ->i form ~a" form))
   (define (is-arrow-i? stx)
-    (equal? (tr:ctc-property stx) '->i))
+    (equal? (tr:ctc-property stx) ->i-key))
+  (define get-dom-prop (mk/get-sub-prop ->i-dom-key))
   (define doms
     (remove-duplicates
      (append*
       (map
-       (λ (form) (trawl-for-doms/rng form ctc:arrow-i-dom-property is-arrow-i?))
+       (λ (form) (trawl-for-doms/rng form get-dom-prop is-arrow-i?))
        arrow-subforms))
      equal?
-     #:key (lambda (ctc) (dom-info-type (ctc:arrow-i-dom-property ctc)))))
+     #:key (lambda (ctc) (dom-info-type (get-dom-prop ctc)))))
+  (define get-rest-prop (mk/get-sub-prop ->i-rest-key))
   (define rest-ctc/#f
-    (match (trawl-for-doms/rng form ctc:arrow-i-rest-property is-arrow-i?)
+    (match (trawl-for-doms/rng form get-rest-prop is-arrow-i?)
       [(list rest-ctc) rest-ctc]
       [_ #f]))
 
-  (define dom-ctc->id (compose dom-info-id ctc:arrow-i-dom-property))
-  (define dom-ctc->deps (compose dom-info-deps ctc:arrow-i-dom-property))
+  (define dom-ctc->id (compose dom-info-id get-dom-prop))
+  (define dom-ctc->deps (compose dom-info-deps get-dom-prop))
 
   ;; rest-ctc->dom-ctc produces a dom-info struct for the given rest contract's
   ;; rest-info. Useful for typechecking rest contracts which may depend on/be
   ;; depended on by the dom and rng contracts. Treating it as an extra dom
   ;; contract lets us typecheck the whole lot uniformly
   (define (rest-ctc->dom-ctc rest-ctc)
-    (define rest (ctc:arrow-i-rest-property rest-ctc))
-    (ctc:arrow-i-dom-property
+    (define rest (get-rest-prop rest-ctc))
+    (tr:ctc-sub-property
      rest-ctc
-     (dom-info
+     (cons
+      ->i-dom-key
+      (dom-info
       (rest-info-id rest)
       (rest-info-deps rest)
       (rest-info-ctc rest)
       +inf.0
-      #t)))
+      #t))))
+  (define get-rng-prop (mk/get-sub-prop ->i-rng-key))
   (define rngs
     (remove-duplicates
      (append*
       (map
-       (λ (form) (trawl-for-doms/rng form ctc:arrow-i-rng-property is-arrow-i?))
+       (λ (form) (trawl-for-doms/rng form get-rng-prop is-arrow-i?))
        arrow-subforms))
      =
-     #:key (lambda (ctc) (rng-info-index (ctc:arrow-i-rng-property ctc)))))
+     #:key (lambda (ctc) (rng-info-index (get-rng-prop ctc)))))
   (when (zero? (length rngs))
     (int-err "no range contract found when typechecking ->i expansion"))
-  (define dom? ctc:arrow-i-dom-property)
-  (define rng-ctc->id (compose rng-info-id ctc:arrow-i-rng-property))
-  (define rng-ctc->deps (compose rng-info-deps ctc:arrow-i-rng-property))
+  (define dom? get-dom-prop)
+  (define rng-ctc->id (compose rng-info-id get-rng-prop))
+  (define rng-ctc->deps (compose rng-info-deps get-rng-prop))
   (define (dom/rng-ctc->id ctc)
     (if (dom? ctc)
         (dom-ctc->id ctc)
@@ -235,7 +241,7 @@
     (match (and rest-ctc/#f
                 (lookup
                  doms-checked-env
-                 (rest-info-id (ctc:arrow-i-rest-property rest-ctc/#f))
+                 (rest-info-id (get-rest-prop rest-ctc/#f))
                  (mk/lookup-fail-in "doms-checked-env")))
       [#f #f]
       [(and t (Con*: (Listof: _) (Listof: _))) t]
@@ -266,8 +272,9 @@
                                     (if (expr->desc? expr)
                                         (Un -Boolean -String (-lst -String))
                                         Univ)))))
-    
-  (define is-pre? ctc:arrow-i-pre-property)
+
+  (define get-pre-prop (mk/get-sub-prop ->i-pre-key))
+  (define is-pre? get-pre-prop)
   (define (pre-dont-recur? form)
     (or (is-arrow-i? form) (is-pre? form)))
   (define pres
@@ -275,9 +282,9 @@
      (map
       (λ (form) (trawl-for-subs form pre-dont-recur? is-pre?))
       arrow-subforms)))
-  (define pre->deps (compose pre-info-deps ctc:arrow-i-pre-property))
-  (define pre->position (compose pre-info-position ctc:arrow-i-pre-property))
-  (define pre->desc? (compose pre-info-desc? ctc:arrow-i-pre-property))
+  (define pre->deps (compose pre-info-deps get-pre-prop))
+  (define pre->position (compose pre-info-position get-pre-prop))
+  (define pre->desc? (compose pre-info-desc? get-pre-prop))
   (for-each (λ (p) (check-pre/post p doms-checked-env pre->deps pre->desc?))
             (sort pres < #:key pre->position))
 
@@ -286,7 +293,7 @@
               ([ctc topo-sorted-rng-ctcs])
       (define ctc-ty (check-subcontract ctc rng-ctc->deps env))
       (extend env (rng-ctc->id ctc) ctc-ty)))
-  (define rng-ctcs (sort rngs < #:key (compose rng-info-index ctc:arrow-i-rng-property)))
+  (define rng-ctcs (sort rngs < #:key (compose rng-info-index get-rng-prop)))
   (define-values (rng-in-tys rng-out-tys)
     (for/lists (in-tys out-tys)
                ([ctc rng-ctcs])
@@ -294,7 +301,8 @@
       (define ctc-ty (check-subcontract ctc rng-ctc->deps rng-checked-env))
       (values (Con*-in-ty ctc-ty) (Con*-out-ty ctc-ty))))
 
-  (define is-post? ctc:arrow-i-post-property)
+  (define get-post-prop (mk/get-sub-prop ->i-post-key))
+  (define is-post? get-post-prop)
   (define (post-dont-recur? form)
     (or (is-arrow-i? form) (is-post? form)))
   (define posts
@@ -302,15 +310,15 @@
      (map
       (λ (form) (trawl-for-subs form post-dont-recur? is-post?))
       arrow-subforms)))
-  (define post-infos (map ctc:arrow-i-post-property posts))
-  (define post->deps (compose post-info-deps ctc:arrow-i-post-property))
-  (define post->desc? (compose post-info-desc? ctc:arrow-i-post-property))
-  (define post->position (compose post-info-position ctc:arrow-i-post-property))
+  (define post-infos (map get-post-prop posts))
+  (define post->deps (compose post-info-deps get-post-prop))
+  (define post->desc? (compose post-info-desc? get-post-prop))
+  (define post->position (compose post-info-position get-post-prop))
   (for-each (λ (p) (check-pre/post p rng-checked-env post->deps post->desc?))
             (sort posts < #:key post->position))
 
 
-  (define dom-infos (map ctc:arrow-i-dom-property doms))
+  (define dom-infos (map get-dom-prop doms))
   (define-values (kw-doms plain-doms)
     (partition (compose keyword? dom-info-type) dom-infos))
   (define-values (reqd-plain-doms opt-plain-doms)
@@ -364,6 +372,11 @@
 (define ((mk/lookup-fail-in name) id)
   (int-err (format "couldn't find ~a in ~a" id name)))
 
+(define ((mk/get-sub-prop key) stx)
+  (match (tr:ctc-sub-property stx)
+    [(cons (== key) value) value]
+    [_ #f]))
+
 ;; trawl-for-subs : syntax -> (list syntax)
 ;; Don't call with a dont-recur? that is also is-sub?; similar reason as with
 ;; trawl-for-doms/rng
@@ -388,12 +401,13 @@
   (define subforms (or (syntax->list form) (list)))
   (when (empty? subforms)
     (int-err "no subforms for given and/c form ~a" form))
-  (define (is-and/c? stx) (equal? (tr:ctc-property stx) 'and/c))
+  (define (is-and/c? stx) (equal? (tr:ctc-property stx) and/c-key))
+  (define get-index (mk/get-sub-prop and/c-index-key))
   (define subs (sort (trawl-for-subs subforms
                                      is-and/c?
-                                     (conjoin syntax? ctc:and/c-sub-property))
+                                     (conjoin syntax? get-index))
                       <
-                      #:key ctc:and/c-sub-property))
+                      #:key get-index))
   (define subs-tys (map (compose coerce-to-con tc-expr/t) subs))
   (define-values (in-ty out-ty)
     (if (empty? subs-tys)
@@ -415,12 +429,13 @@
   (define subforms (or (syntax->list form) (list)))
   (when (empty? subforms)
     (int-err "no subforms for given or/c form ~a" form))
-  (define (is-or/c? stx) (equal? (tr:ctc-property stx) 'or/c))
+  (define (is-or/c? stx) (equal? (tr:ctc-property stx) or/c-key))
+  (define get-index (mk/get-sub-prop or/c-index-key))
   (define subs (sort (trawl-for-subs subforms
                                      is-or/c?
-                                     (conjoin syntax? ctc:or/c-sub-property))
+                                     (conjoin syntax? get-index))
                      <
-                     #:key ctc:or/c-sub-property))
+                     #:key get-index))
   (define-values (in-ty out-ty)
     (for/fold ([in-ty Univ]
                [out-ty (Un)])
@@ -432,13 +447,14 @@
   (ret (-Con in-ty out-ty)))
 
 (define (tc-list/c form)
-  (define (is-list/c? stx) (equal? (tr:ctc-property stx) 'list/c))
+  (define (is-list/c? stx) (equal? (tr:ctc-property stx) list/c-key))
+  (define get-index (mk/get-sub-prop list/c-index-key))
   (define subs
     (match (syntax->list form)
       [(list subforms ...)
        (define subs* (trawl-for-subs subforms is-list/c?
-                                     (conjoin syntax? ctc:list/c-sub-property)))
-       (sort subs* < #:key ctc:list/c-sub-property)]
+                                     (conjoin syntax? get-index)))
+       (sort subs* < #:key get-index)]
       [#f (int-err "no subforms for given list/c form ~a" form)]))
 
   (define-values (in-tys out-tys)
