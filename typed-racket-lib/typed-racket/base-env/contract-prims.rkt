@@ -23,6 +23,9 @@
          (prefix-in untyped: racket/contract/base))
 (provide (except-out (all-defined-out)
                      define-contract)
+         ;; TODO: since we don't support all of the p/c-item forms (exists,
+         ;; struct, etc.), we really should provide our own versions of these
+         ;; two forms that give good "x is unsupported" messages
          (rename-out [untyped:provide/contract provide/contract]
                      [untyped:contract-out contract-out]))
 
@@ -297,8 +300,11 @@
        (quasisyntax/loc stx
          (untyped:->i (#,@(apply append (map syntax->list (or (attribute mand-doms.form)
                                                               (list)))))
-                      (#,@(apply append (map syntax->list (or (attribute opt-doms.form)
-                                                              (list)))))
+                      #,@(let ()
+                           (define opt-doms/#f (attribute opt-doms.form))
+                           (if (not opt-doms/#f)
+                               (list)
+                               (list (apply append (map syntax->list opt-doms/#f)))))
                       #,@(flatten (or (attribute pre.forms) (list)))
                       #,@(if (attribute rest)
                              (list #'#:rest #`[rest.id
