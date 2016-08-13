@@ -11,6 +11,7 @@
          (private type-annotation)
          (rep type-rep prop-rep)
          (utils tc-utils)
+         (base-env base-special-env)
 
          (for-label racket/base racket/bool '#%paramz))
 
@@ -20,6 +21,8 @@
 
 (define-literal-set special-literals #:for-label
   (extend-parameterization false? not call-with-values list))
+(define coerce-ctc
+  (make-template-identifier 'coerce-contract 'racket/contract/private/guts))
 
 (define-tc/app-syntax-class (tc/app-special expected)
   #:literal-sets (kernel-literals special-literals)
@@ -80,4 +83,10 @@
   (pattern (app-ctc ctc val pos neg name loc)
     #:declare app-ctc (id-from 'apply-contract 'racket/contract/private/base)
     #:do [(register-ignored! #'loc)]
-    (check-contract-app #'ctc #'val)))
+    (check-contract-app #'ctc #'val))
+  ;; coerce-contract is actually a function but its type is somewhat complex, so
+  ;; we typecheck it here. If it seems worth it to support this in higher-order
+  ;; cases, we can give the identifier a type in contract-prims.
+  (pattern (c-c sym e)
+    #:when (and (identifier? #'c-c) (free-identifier=? coerce-ctc #'c-c))
+    (ret (coerce-to-con (tc-expr/t #'e)))))
