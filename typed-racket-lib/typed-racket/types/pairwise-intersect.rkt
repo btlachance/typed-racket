@@ -6,7 +6,7 @@
 ;; contracted value, given the value's type and the contract's output type.
 
 (require "../utils/utils.rkt"
-         (rep type-rep prop-rep)
+         (rep type-rep prop-rep object-rep)
          (types subtype)
          (only-in (infer infer) intersect)
          racket/match)
@@ -86,10 +86,12 @@
     [((Function: arr1s) (Function: arr2s))
      #:when (= (length arr1s) (length arr2s))
      (make-Function (map pairwise-intersect/arr arr1s arr2s))]
-    [((Result: ss pset-s o) (Result: ts pset-t o))
+    [((Result: ss pset-s o1) (Result: ts pset-t o2))
      (make-Result (pairwise-intersect ss ts)
                   (pairwise-intersect/prop-set pset-s pset-t)
-                  o)]
+                  (match* (o1 o2)
+                    [((Empty:) o2) o2]
+                    [(o1 (Empty:)) o1]))]
     [((Values: rs) (Values: rt))
      (make-Values (map pairwise-intersect rs rt))]
     [((ValuesDots: s-rs s-dty dbound) (ValuesDots: t-rs t-dty dbound))

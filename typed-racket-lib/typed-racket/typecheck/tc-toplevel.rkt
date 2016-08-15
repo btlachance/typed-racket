@@ -139,7 +139,7 @@
        (list)]
 
       ;; definitions lifted from contracts should be ignored
-      [(define-values (lifted ...) expr)
+      [(define-values (lifted) expr)
        #:when (contract-lifted-property #'expr)
        #:do [(register-ignored! #'expr)]
        (list)]
@@ -207,7 +207,7 @@
        (list)]
 
       ;; definitions lifted from contracts should be ignored
-      [(define-values (lifted ...) expr)
+      [(define-values (lifted) expr)
        #:when (contract-lifted-property #'expr)
        #:do [(register-ignored! #'expr)]
        (list)]
@@ -304,7 +304,7 @@
       [(module* n spec body ...) 'no-type]
 
       ;; definitions lifted from contracts should be ignored
-      [(define-values (lifted ...) expr)
+      [(define-values (lifted) expr)
        #:when (contract-lifted-property #'expr)
        #:do [(register-ignored! #'expr)]
        'no-type]
