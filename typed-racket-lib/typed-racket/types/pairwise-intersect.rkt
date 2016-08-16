@@ -91,7 +91,14 @@
                   (pairwise-intersect/prop-set pset-s pset-t)
                   (match* (o1 o2)
                     [((Empty:) o2) o2]
-                    [(o1 (Empty:)) o1]))]
+                    [(o1 (Empty:)) o1]
+                    [(o o) o]
+                    [(_ _)
+                     (raise-arguments-error
+                      'pairwise-intersect
+                      "objects must both be identical or one must be empty"
+                      "o1" o1
+                      "o2" o2)]))]
     [((Values: rs) (Values: rt))
      (make-Values (map pairwise-intersect rs rt))]
     [((ValuesDots: s-rs s-dty dbound) (ValuesDots: t-rs t-dty dbound))
