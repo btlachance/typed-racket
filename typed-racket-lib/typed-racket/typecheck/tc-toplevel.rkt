@@ -273,7 +273,8 @@
             stx:tr:unit^
             stx:tr:unit:invoke^
             stx:tr:unit:compound^
-            stx:tr:unit:from-context^)
+            stx:tr:unit:from-context^
+            stx:tr:ctc^)
        (tc-expr #'stx)]
       ;; Handle define-values/invoke-unit form typechecking, by making sure that
       ;; inferred imports have the correct types
