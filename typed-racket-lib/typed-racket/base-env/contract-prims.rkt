@@ -27,7 +27,8 @@
          ;; struct, etc.), we really should provide our own versions of these
          ;; two forms that give good "x is unsupported" messages
          (rename-out [untyped:provide/contract provide/contract]
-                     [untyped:contract-out contract-out]))
+                     [untyped:contract-out contract-out]
+                     [untyped:contract contract]))
 
 (define-syntax (define-contract stx)
   (define-syntax-class def
