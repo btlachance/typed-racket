@@ -143,7 +143,7 @@
 (define-syntax (->/c stx)
   (syntax-parse stx
     #:literals (->/c)
-    [(->/c doms:expr ... (values rngs:expr ...))
+    [(->/c doms:expr ... ((~literal values) rngs:expr ...))
      (tr:ctc-property
       (ignore
        (quasisyntax/loc stx

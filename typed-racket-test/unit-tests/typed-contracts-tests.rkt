@@ -247,8 +247,12 @@
           (-Con Univ -PosInt)]
     [tc-e (and/c exact-integer? string?)
           (-Con Univ (t:Un))]
-    [tc-err (and/c exact-integer? (lambda: ([x : Positive-Integer]) (even? x)))]
-    [tc-err (and/c exact-integer? (lambda: ([x : String]) (equal? x "foo")))])
+    [tc-err (let ()
+              (and/c exact-integer? (lambda: ([x : Positive-Integer]) (even? x))))
+            #:ret (ret (-Con Univ -PosInt) -tt-propset)
+            #:msg #rx"type mismatch"]
+    [tc-err (and/c exact-integer? (lambda: ([x : String]) (equal? x "foo")))
+            #:ret (ret (-Con Univ (t:Un)) -tt-propset)])
 
    (test-suite
     "misc"

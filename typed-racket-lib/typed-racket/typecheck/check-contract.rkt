@@ -47,9 +47,9 @@
 
 (define (tc-arrow-contract form)
   (define arrow-subforms (or (syntax->list form) (list)))
-
   (when (empty? arrow-subforms)
     (int-err "no subforms for given -> contract form ~a" form))
+
   (define (is-arrow? stx) (equal? (tr:ctc-property stx) ->-key))
   (define get-dom-prop (mk/get-sub-prop ->-dom-key))
   (define doms
@@ -57,19 +57,17 @@
      (map
       (λ (form) (trawl-for-doms/rng form get-dom-prop is-arrow?))
       arrow-subforms)))
-
-  (define get-rng-prop (mk/get-sub-prop ->-rng-key))
-  (define rng*
-    (append* (map
-              (λ (form) (trawl-for-doms/rng form get-rng-prop is-arrow?))
-              arrow-subforms)))
-
   (define-values (in-doms out-doms)
     (for/lists (ins outs)
                ([dom (in-list (sort doms < #:key get-dom-prop))])
       (define dom-ty (coerce-to-con (tc-expr/t dom)))
       (values (Con*-in-ty dom-ty) (Con*-out-ty dom-ty))))
 
+  (define get-rng-prop (mk/get-sub-prop ->-rng-key))
+  (define rng*
+    (append* (map
+              (λ (form) (trawl-for-doms/rng form get-rng-prop is-arrow?))
+              arrow-subforms)))
   (define-values (in-rngs out-rngs)
     (for/lists (ins outs)
                ([rng (in-list (sort rng* < #:key get-rng-prop))])
@@ -411,21 +409,19 @@
                                      (conjoin syntax? get-index))
                       <
                       #:key get-index))
-  (define subs-tys (map (compose coerce-to-con tc-expr/t) subs))
+
   (define-values (in-ty out-ty)
-    (if (empty? subs-tys)
-        (values Univ Univ)
-        (for/fold ([in-ty (Con*-in-ty (first subs-tys))]
-                   [out-ty (Con*-out-ty (first subs-tys))])
-                  ([ty (in-list (rest subs-tys))])
-          (define next-in-ty (Con*-in-ty ty))
-          (unless (subtype out-ty next-in-ty)
-            (tc-error/fields
-             "preceding contract's output type does not match the next input type"
-             #:delayed? #t
-             "previous output type" out-ty
-             "next input type" next-in-ty))
-          (values in-ty (pairwise-intersect out-ty (Con*-out-ty ty))))))
+    (match subs
+      [(list sub0 subs-rest ...)
+       (define sub0-ty (coerce-to-con (tc-expr/t sub0)))
+       (for/fold ([in-ty (Con*-in-ty sub0-ty)]
+                  [out-ty (Con*-out-ty sub0-ty)])
+                 ([sub (in-list subs-rest)])
+         (parameterize ([current-orig-stx sub])
+           (define ty (coerce-to-con (tc-expr/t sub)))
+           (check-below out-ty (Con*-in-ty ty))
+           (values in-ty (pairwise-intersect out-ty (Con*-out-ty ty)))))]
+      [(list) (values Univ Univ)]))
   (ret (-Con in-ty out-ty)))
 
 (define (tc-or/c form)
@@ -489,4 +485,4 @@
     [_ (tc-error/fields "could not coerce to a contract type"
                         #:delayed? #t
                         "type" ty)
-       (-Con (Un) Univ)]])
+       (-Con Univ (Un))]])
