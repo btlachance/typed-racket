@@ -99,7 +99,7 @@
   ;; promise/c
   ;; flat-contract
   ;; flat-contract-predicate
-  [symbols (-> Symbol * (Con Any Symbol))])
+  [symbols (-> Symbol Symbol * (Con Any Symbol))])
 
 (define-syntax (and/c stx)
   (syntax-parse stx
@@ -143,7 +143,21 @@
 (define-syntax (->/c stx)
   (syntax-parse stx
     #:literals (->/c)
-    [(->/c doms:expr ... rng:expr)
+    [(->/c doms:expr ... (values rngs:expr ...))
+     (tr:ctc-property
+      (ignore
+       (quasisyntax/loc stx
+         (untyped:-> #,@(for/list ([dom (in-syntax #'(doms ...))]
+                                   [idx (in-naturals)])
+                          (tr:ctc-sub-property dom (cons ->-dom-key idx)))
+                     (values #,@(for/list ([rng (in-syntax #'(rngs ...))]
+                                           [idx (in-naturals)])
+                                  (tr:ctc-sub-property rng (cons ->-rng-key idx)))))))
+      ->-key)]
+    [(->/c doms:expr ... (~or (~and (~literal any)
+                                    ~!
+                                    (~fail "Typed Racket does not support the any range"))
+                              rng:expr))
      (tr:ctc-property
       (ignore
        (quasisyntax/loc stx
@@ -275,7 +289,9 @@
              #:attr form
              (tr:ctc-sub-property
               #'untyped:any
-              (cons ->i-rng-key (rng-info #f #f #'any 0))))
+              (cons ->i-rng-key (rng-info #f #f #'any 0)))
+             ;; TODO: support this
+             #:fail-when #t "Typed Racket does not support the any range")
     (pattern ((~literal values) rng:id+ctc ...)
              #:attr form
              #`(values #,@(map rng-id+ctc->form (syntax->list #'(rng ...)))))

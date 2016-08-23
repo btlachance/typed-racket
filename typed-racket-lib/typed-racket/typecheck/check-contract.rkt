@@ -57,24 +57,27 @@
      (map
       (λ (form) (trawl-for-doms/rng form get-dom-prop is-arrow?))
       arrow-subforms)))
-  (define sorted-doms (sort doms < #:key get-dom-prop))
-  (define is-rng? (mk/get-sub-prop ->-rng-key))
+
+  (define get-rng-prop (mk/get-sub-prop ->-rng-key))
   (define rng*
     (append* (map
-              (λ (form) (trawl-for-doms/rng form is-rng? is-arrow?))
+              (λ (form) (trawl-for-doms/rng form get-rng-prop is-arrow?))
               arrow-subforms)))
-  (when (not (= 1 (length rng*)))
-    (int-err "got more than one rng when typechecking -> contract"))
-  (define rng (first rng*))
 
   (define-values (in-doms out-doms)
     (for/lists (ins outs)
-               ([dom (in-list sorted-doms)])
+               ([dom (in-list (sort doms < #:key get-dom-prop))])
       (define dom-ty (coerce-to-con (tc-expr/t dom)))
       (values (Con*-in-ty dom-ty) (Con*-out-ty dom-ty))))
-  (define rng-ty (coerce-to-con (tc-expr/t rng)))
-  (ret (-Con (->* out-doms (Con*-in-ty rng-ty))
-             (->* in-doms (Con*-out-ty rng-ty)))))
+
+  (define-values (in-rngs out-rngs)
+    (for/lists (ins outs)
+               ([rng (in-list (sort rng* < #:key get-rng-prop))])
+      (define rng-ty (coerce-to-con (tc-expr/t rng)))
+      (values (Con*-in-ty rng-ty) (Con*-out-ty rng-ty))))
+
+  (ret (-Con (->* out-doms (-values in-rngs))
+             (->* in-doms (-values out-rngs)))))
 
 ;; trawl-for-doms/rng : syntax predicate predicate -> (listof syntax) Finds
 ;; syntax/subforms for which is-dom/rng? returns a non-#f value. Does not recur
@@ -419,7 +422,7 @@
           (unless (subtype out-ty next-in-ty)
             (tc-error/fields
              "preceding contract's output type does not match the next input type"
-             #:delayed? #f
+             #:delayed? #t
              "previous output type" out-ty
              "next input type" next-in-ty))
           (values in-ty (pairwise-intersect out-ty (Con*-out-ty ty))))))
