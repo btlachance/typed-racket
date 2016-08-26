@@ -76,7 +76,6 @@ currently supported in Typed Racket.
               @defthing[natural-number/c (FlatCon Any Natural)]
               @defproc[(string-len/c [len Real])
                        (FlatCon Any String)]
-              @defthing[false/c (FlatCon Any False)]
               @defthing[printable/c (FlatCon Any Any)]
               @defproc[(listof [c (Con a b)])
                        (Con (Listof a) (Listof b))]
@@ -150,4 +149,8 @@ library is a work in progress.
 
 @itemlist[
   @item{Contract types do not have any contract compilation/runtime enforcement}
-  @item{Racket's built-in combinators for vectors, boxes, hashes are unsupported}]
+  @item{Racket's built-in combinators for vectors, boxes, hashes are unsupported}
+  @item{Values that pass Racket's @racket[flat-contract?] are not necessarily
+        members of the type @racket[FlatCon]: members of that type can be used
+        in function position, but @racket[flat-contract?] returns true for
+        non-predicates}].

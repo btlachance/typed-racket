@@ -62,7 +62,9 @@
            (-> Integer Integer (FlatCon Any Integer)))]
   [natural-number/c (FlatCon Any Natural)]
   [string-len/c (-> Real (FlatCon Any String))]
-  [false/c (FlatCon Any False)]
+  ;; Because we can use FlatCon in function position and because false/c = #f,
+  ;; giving it the type below is not sound
+  ;; [false/c (FlatCon Any False)]
   [printable/c (FlatCon Any Any)]
   ;; one-of/c
   ;; vectorof
