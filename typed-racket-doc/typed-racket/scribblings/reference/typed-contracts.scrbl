@@ -1,7 +1,8 @@
 #lang scribble/manual
 
 @begin[(require "../utils.rkt" scribble/example racket/sandbox racket/require
-                (for-label (only-meta-in 0 typed/racket)))]
+                (for-label (only-meta-in 0 typed/racket)
+                           (only-in racket/contract flat-contract?)))]
 @(define the-top-eval (make-base-eval))
 @(the-top-eval '(require (except-in typed/racket #%module-begin)))
 
@@ -148,9 +149,8 @@ library is a work in progress.
 @section{Limitations}
 
 @itemlist[
-  @item{Contract types do not have any contract compilation/runtime enforcement}
-  @item{Racket's built-in combinators for vectors, boxes, hashes are unsupported}
-  @item{Values that pass Racket's @racket[flat-contract?] are not necessarily
-        members of the type @racket[FlatCon]: members of that type can be used
-        in function position, but @racket[flat-contract?] returns true for
-        non-predicates}].
+  @item{Contract types do not have any contract compilation/runtime enforcement.}
+  @item{Racket's built-in combinators for vectors, boxes, hashes are unsupported.}
+  @item{Values that pass @racket[flat-contract?] are not necessarily members of
+        the @racket[FlatCon] type: members of that type can be used in function
+        position, but @racket[flat-contract?] returns true for non-predicates.}]
