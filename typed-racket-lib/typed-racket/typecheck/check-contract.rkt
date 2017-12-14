@@ -21,7 +21,7 @@
          (typecheck check-below)
          (only-in (infer infer) meet join)
          (utils tc-utils contract-utils)
-         (rep type-rep)
+         (rep type-rep values-rep)
          (private syntax-properties)
          "signatures.rkt")
 
@@ -228,7 +228,7 @@
       (for/fold ([env env])
                 ([surface-id surface-deps]
                  [expanded-id (in-syntax expanded-deps)])
-        (extend env expanded-id (Con*-out-ty (lookup env surface-id lookup-fail)))))
+        (env-set-id-type env expanded-id (Con*-out-ty (env-lookup-id env surface-id lookup-fail)))))
     (with-lexical-env deps-env
       (coerce-to-con (tc-expr/t expanded-ctc))))
 
@@ -236,11 +236,11 @@
     (for/fold ([env (lexical-env)])
               ([ctc topo-sorted-dom-ctcs])
       (define ctc-ty (check-subcontract ctc dom-ctc->deps env))
-      (extend env (dom-ctc->id ctc) ctc-ty)))
+      (env-set-id-type env (dom-ctc->id ctc) ctc-ty)))
 
   (define rest-ctc-ty/#f
     (match (and rest-ctc/#f
-                (lookup
+                (env-lookup-id
                  doms-checked-env
                  (rest-info-id (get-rest-prop rest-ctc/#f))
                  (mk/lookup-fail-in "doms-checked-env")))
@@ -267,7 +267,7 @@
       (for/fold ([env env])
                 ([surface-id surface-deps]
                  [expanded-id (in-syntax expanded-deps)])
-        (extend env expanded-id (Con*-out-ty (lookup env surface-id lookup-fail)))))
+        (env-set-id-type env expanded-id (Con*-out-ty (env-lookup-id env surface-id lookup-fail)))))
     (with-lexical-env deps-env
       (tc-expr/check expanded-expr (ret
                                     (if (expr->desc? expr)
@@ -293,7 +293,7 @@
     (for/fold ([env doms-checked-env])
               ([ctc topo-sorted-rng-ctcs])
       (define ctc-ty (check-subcontract ctc rng-ctc->deps env))
-      (extend env (rng-ctc->id ctc) ctc-ty)))
+      (env-set-id-type env (rng-ctc->id ctc) ctc-ty)))
   (define rng-ctcs (sort rngs < #:key (compose rng-info-index get-rng-prop)))
   (define-values (rng-in-tys rng-out-tys)
     (for/lists (in-tys out-tys)
@@ -332,29 +332,29 @@
       (define opts (take opt-plain-doms vararg-slice-length))
       (define doms (append reqd-plain-doms opts))
       (define lookup-fail (mk/lookup-fail-in "doms-checked-env"))
-      (define (dom-ty d) (lookup doms-checked-env (dom-info-id d) lookup-fail))
+      (define (dom-ty d) (env-lookup-id doms-checked-env (dom-info-id d) lookup-fail))
       (define ((kw-in/out Con*in/out-ty) kw-info)
         (define kw (dom-info-type kw-info))
-        (define ty (lookup doms-checked-env (dom-info-id kw-info) lookup-fail))
+        (define ty (env-lookup-id doms-checked-env (dom-info-id kw-info) lookup-fail))
         (make-Keyword kw (Con*in/out-ty ty) (dom-info-mandatory? kw-info)))
       (define (list-contents-ty list-ty)
         (match list-ty
           [(Listof: ty) ty]))
       (values
-       (make-arr* (map (compose Con*-out-ty dom-ty) doms)
-                  (make-Values (map (λ (ty) (-result ty -tt-propset -empty-obj)) rng-in-tys))
-                  #:rest (and rest-ctc-ty/#f
-                              ;; at this point, we know rest-ctc-ty/#f will be
-                              ;; given a list type
-                              (list-contents-ty (Con*-out-ty rest-ctc-ty/#f)))
-                  #:kws (map (kw-in/out Con*-out-ty) sorted-kw-doms))
-       (make-arr* (map (compose Con*-in-ty dom-ty) doms)
-                  (make-Values (map (λ (ty) (-result ty -tt-propset -empty-obj)) rng-out-tys))
-                  #:rest (and rest-ctc-ty/#f
-                              ;; ditto above remark about rest-ctc-ty/#f
-                              (list-contents-ty (Con*-in-ty rest-ctc-ty/#f)))
-                  #:kws (map (kw-in/out Con*-in-ty) sorted-kw-doms)))))
-  (ret (-Con (make-Function in-arrs) (make-Function out-arrs))))
+       (-Arrow (map (compose Con*-out-ty dom-ty) doms)
+               (make-Values (map (λ (ty) (-result ty -tt-propset -empty-obj)) rng-in-tys))
+               #:rest (and rest-ctc-ty/#f
+                           ;; at this point, we know rest-ctc-ty/#f will be
+                           ;; given a list type
+                           (list-contents-ty (Con*-out-ty rest-ctc-ty/#f)))
+               #:kws (map (kw-in/out Con*-out-ty) sorted-kw-doms))
+       (-Arrow (map (compose Con*-in-ty dom-ty) doms)
+               (make-Values (map (λ (ty) (-result ty -tt-propset -empty-obj)) rng-out-tys))
+               #:rest (and rest-ctc-ty/#f
+                           ;; ditto above remark about rest-ctc-ty/#f
+                           (list-contents-ty (Con*-in-ty rest-ctc-ty/#f)))
+               #:kws (map (kw-in/out Con*-in-ty) sorted-kw-doms)))))
+  (ret (-Con (make-Fun in-arrs) (make-Fun out-arrs))))
 
 ;; topo-sort-ctcs : (Listof Stx) (Stx -> Id) (Stx -> Listof Id) -> Listof Stx
 ;; Returns a permutation of ctcs in topo-order, according to their dependencies

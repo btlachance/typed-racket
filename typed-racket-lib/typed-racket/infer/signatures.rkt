@@ -19,8 +19,8 @@
    [cond-contracted insert (cset? symbol? Type? Type? . -> . cset?)]
    [cond-contracted cset-join ((listof cset?) . -> . cset?)]
    [cond-contracted c-meet ((c? c?) (symbol?) . ->* . (or/c #f c?))]
-   [cond-contracted meet (Type/c Type/c . -> . Type/c)]
-   [cond-contracted join (Type/c Type/c . -> . Type/c)]))
+   [cond-contracted meet (Type? Type? . -> . Type?)]
+   [cond-contracted join (Type? Type? . -> . Type?)]))
 
 (define-signature intersect^
   ([cond-contracted intersect ((Type? Type?) (OptObject?) . ->* . Type?)]

@@ -31,7 +31,7 @@
 
 (define-signature check-contract^
   ([cond-contracted check-contract ((syntax?) ((or/c tc-results/c #f)) . ->* . full-tc-results/c)]
-   [cond-contracted coerce-to-con (Type/c . -> . Type/c)]
+   [cond-contracted coerce-to-con (Type? . -> . Type?)]
    [cond-contracted check-contract-app ((;; a contract
                                          syntax?
                                          ;; what's being contracted

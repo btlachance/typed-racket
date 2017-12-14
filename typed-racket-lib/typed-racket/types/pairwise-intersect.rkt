@@ -6,7 +6,7 @@
 ;; contracted value, given the value's type and the contract's output type.
 
 (require "../utils/utils.rkt"
-         (rep type-rep prop-rep object-rep)
+         (rep type-rep prop-rep object-rep values-rep)
          (types subtype)
          (only-in (infer infer) intersect)
          racket/match)
@@ -15,15 +15,14 @@
 
 (define (pairwise-intersect/arr s t)
   (match* (s t)
-    [((arr: s-dom s-rng s-rest #f s-kws)
-      (arr: t-dom t-rng t-rest #f t-kws))
+    [((Arrow: s-dom s-rest s-kws s-rng)
+      (Arrow: t-dom t-rest t-kws t-rng))
      #:when (= (length s-kws) (length t-kws))
-     (make-arr (map pairwise-intersect s-dom t-dom)
-               (pairwise-intersect s-rng t-rng)
-               (and s-rest t-rest
-                    (pairwise-intersect s-rest t-rest))
-               #f
-               (map pairwise-intersect/kw s-kws t-kws))]
+     (make-Arrow (map pairwise-intersect s-dom t-dom)
+                 (and s-rest t-rest
+                      (pairwise-intersect s-rest t-rest))
+                 (map pairwise-intersect/kw s-kws t-kws)
+                 (pairwise-intersect s-rng t-rng))]
     [(_ _)
      (raise-arguments-error
       'pairwise-intersect/arr
@@ -83,9 +82,9 @@
   (match* (s t)
     [((Univ:) u) u]
     [(u (Univ:)) u]
-    [((Function: arr1s) (Function: arr2s))
+    [((Fun: arr1s) (Fun: arr2s))
      #:when (= (length arr1s) (length arr2s))
-     (make-Function (map pairwise-intersect/arr arr1s arr2s))]
+     (make-Fun (map pairwise-intersect/arr arr1s arr2s))]
     [((Result: ss pset-s o1) (Result: ts pset-t o2))
      (make-Result (pairwise-intersect ss ts)
                   (pairwise-intersect/prop-set pset-s pset-t)
@@ -112,7 +111,7 @@
      #:when (or (subtype t s) (subtype s t))
      t]
     [(_ _)
-     #:when (and (Type/c? s) (Type/c? t))
+     #:when (and (Type? s) (Type? t))
      (intersect s t)]
     [(_ _)
      (raise-arguments-error

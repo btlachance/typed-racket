@@ -597,12 +597,12 @@
         [((FlatCon: S-pre S-post) (Con: T-pre T-post))
          (% cset-meet (cg T-pre S-pre obj) (cg S-post T-post obj))]
         [((and (PredicateProp: (PropSet: (TypeProp: _ S-post) _))
-               (Function: (list (arr: (list S-pre) _ _ _ _))))
+               (Fun: (list (Arrow: (list S-pre) _ _ _))))
           ;; Apparently I can't just have the FlatCon case -- is the inference
           ;; not aware of the subtyping relation?
           (Con*: T-pre T-post))
          (% cset-meet (cg T-pre S-pre obj) (cg S-post T-post obj))]
-        [((Function: (list (arr: (list S-pre) _ _ _ _)))
+        [((Fun: (list (Arrow: (list S-pre) _ _ _)))
           (Con*: T-pre T-post))
          (% cset-meet (cg T-pre S-pre obj) (cg S-pre T-post obj))]
 

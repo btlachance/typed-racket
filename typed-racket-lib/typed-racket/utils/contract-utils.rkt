@@ -1,7 +1,7 @@
 #lang racket
 (require
  "utils.rkt"
- (rep type-rep prop-rep))
+ (rep type-rep prop-rep values-rep))
 (provide (all-defined-out))
 
 ;; dom-info is a (dom-info Option<Syntax> Option<Deps> Syntax ArgType Boolean)
@@ -52,26 +52,26 @@
           (? FlatCon? (app FlatCon-in-ty in) (app FlatCon-out-ty out))
           (? Con? (app Con-in-ty in) (app Con-out-ty out)))])))
 
-;; A ConFnInfo is a (List Type/c Type/c) representing the in/out type components
+;; A ConFnInfo is a (List Type? Type?) representing the in/out type components
 ;; of a function that could be coerced to a FlatCon
 
-;; con-fn-in : Type/c -> Type/c
-;; Assumes that ty is a Type/c that confn-type-components returns non-#f
+;; con-fn-in : Type? -> Type?
+;; Assumes ty has non-#f confn-type-components
 (define (confn-in ty) (car (confn-type-components ty)))
-;; confn-out : Type/c -> Type/c
-;; Assumes that ty is a Type/c that confn-type-components returns non-#f
+;; confn-out : Type? -> Type?
+;; Assumes ty has non-#f confn-type-components
 (define (confn-out ty) (cadr (confn-type-components ty)))
-;; confn-type-components : Type/c -> #f or ConFnInfo
+;; confn-type-components : Type? -> #f or ConFnInfo
 ;; Note: only gets components for functions with a single unary arr
 (define (confn-type-components ty)
   ;; TODO: find all unary arities and union their inputs/meet their outputs
   (match ty
-    [(Function: (list (arr:
-                       (list in-ty)
-                       (Values: (list (Result: _ (PropSet: (TypeProp: _ out-ty) _) _)))
-                       _ _ _)))
+    [(Fun: (list (Arrow:
+                  (list in-ty)
+                  _ _
+                  (Values: (list (Result: _ (PropSet: (TypeProp: _ out-ty) _) _))))))
      (list in-ty out-ty)]
-    [(Function: (list (arr: (list in-ty) _ _ _ _)))
+    [(Fun: (list (Arrow: (list in-ty) _ _ _)))
      ;; when there isn't a TypeProp
      (list in-ty in-ty)]
     [_ #f]))

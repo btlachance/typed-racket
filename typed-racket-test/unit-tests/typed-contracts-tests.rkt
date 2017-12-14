@@ -18,7 +18,7 @@
          (except-in (base-env extra-procs prims base-types base-types-extra)
                     define lambda λ case-lambda)
          (prefix-in tr: (only-in (base-env prims) define lambda λ case-lambda))
-         (for-syntax (rep type-rep prop-rep object-rep)
+         (for-syntax (rep type-rep prop-rep object-rep values-rep)
                      (rename-in (types abbrev union numeric-tower prop-ops utils)
                                 [Un t:Un]
                                 [-> t:->])))
@@ -141,7 +141,7 @@
                    #:rest [xs number?]
                    [_ any/c])
               (void))
-            #:ret (ret -Void)
+            #:ret (ret -Void -true-propset)
             #:msg "#:rest contract must be a list contract"]
     ;; dom depending on #:rest
     [tc-e (->i ([x (xs) (lambda: ([x : Integer]) (apply > x -inf.0 xs))])
@@ -175,12 +175,12 @@
     [tc-err (let ()
               (->i () #:pre/desc () 0 [_ any/c])
               (void))
-            #:ret (ret -Void)
+            #:ret (ret -Void -true-propset)
             #:msg #rx"expected:(.*(Boolean|String|\\(Listof String\\)))+"]
     [tc-err (let ()
               (->i () [_ any/c] #:post/desc () 0)
               (void))
-            #:ret (ret -Void)
+            #:ret (ret -Void -true-propset)
             #:msg #rx"expected:(.*(Boolean|String|\\(Listof String\\)))+"]
     [tc-e (->i ([x natural-number/c]
                 [y natural-number/c])
@@ -249,10 +249,10 @@
           (-Con Univ (t:Un))]
     [tc-err (let ()
               (and/c exact-integer? (lambda: ([x : Positive-Integer]) (even? x))))
-            #:ret (ret (-Con Univ -PosInt) -tt-propset)
+            #:ret (ret (-Con Univ -PosInt) -true-propset)
             #:msg #rx"type mismatch"]
     [tc-err (and/c exact-integer? (lambda: ([x : String]) (equal? x "foo")))
-            #:ret (ret (-Con Univ (t:Un)) -tt-propset)])
+            #:ret (ret (-Con Univ (t:Un)) -true-propset)])
 
    (test-suite
     "misc"
